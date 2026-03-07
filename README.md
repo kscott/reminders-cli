@@ -32,7 +32,7 @@ Requires macOS with Swift installed (comes with Xcode command line tools).
 
 ```bash
 # Clone and set up
-git clone https://github.com/kscott/reminders-cli.git ~/dev/reminders-cli
+git clone git@github.com:kscott/reminders-cli.git ~/dev/reminders-cli
 ~/dev/reminders-cli/reminders setup
 ```
 
