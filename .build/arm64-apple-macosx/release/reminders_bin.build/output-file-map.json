@@ -1,0 +1,13 @@
+{
+  "": {
+    "dependencies": "/Users/ken/dev/reminders-cli/.build/arm64-apple-macosx/release/reminders_bin.build/reminders_bin.d",
+    "object": "/Users/ken/dev/reminders-cli/.build/arm64-apple-macosx/release/reminders_bin.build/reminders_bin.o",
+    "swift-dependencies": "/Users/ken/dev/reminders-cli/.build/arm64-apple-macosx/release/reminders_bin.build/master.swiftdeps"
+  },
+  "/Users/ken/dev/reminders-cli/Sources/RemindersCLI/main.swift": {
+    "object": "/Users/ken/dev/reminders-cli/.build/arm64-apple-macosx/release/reminders_bin.build/main.swift.o",
+    "swiftmodule": "/Users/ken/dev/reminders-cli/.build/arm64-apple-macosx/release/reminders_bin.build/main~partial.swiftmodule",
+    "swift-dependencies": "/Users/ken/dev/reminders-cli/.build/arm64-apple-macosx/release/reminders_bin.build/main.swiftdeps",
+    "diagnostics": "/Users/ken/dev/reminders-cli/.build/arm64-apple-macosx/release/reminders_bin.build/main.dia"
+  }
+}

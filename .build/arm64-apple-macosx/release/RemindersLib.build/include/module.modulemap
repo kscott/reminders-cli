@@ -1,0 +1,3 @@
+module RemindersLib {
+    header "/Users/ken/dev/reminders-cli/.build/arm64-apple-macosx/release/RemindersLib.build/include/RemindersLib-Swift.h"
+}

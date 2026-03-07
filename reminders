@@ -7,21 +7,32 @@
 #
 # To set up on a new machine:
 #   ~/dev/reminders-cli/reminders setup
+#
+# To run tests:
+#   ~/dev/reminders-cli/reminders test
 
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
-SOURCE="$SCRIPT_DIR/reminders-bin.swift"
 BINARY="$HOME/bin/reminders-bin"
 SYMLINK="$HOME/bin/reminders"
 
 if [[ "$1" == "setup" ]]; then
-  echo "Compiling $SOURCE -> $BINARY..."
-  swiftc "$SOURCE" -o "$BINARY" || { echo "Compilation failed."; exit 1; }
-  echo "Compiled OK."
+  echo "Building $SCRIPT_DIR..."
+  swift build -c release --package-path "$SCRIPT_DIR" 2>&1 || { echo "Build failed."; exit 1; }
+  echo "Build OK."
+
+  cp "$SCRIPT_DIR/.build/release/reminders-bin" "$BINARY" || { echo "Copy failed."; exit 1; }
+  echo "Installed binary to $BINARY."
 
   echo "Creating symlink $SYMLINK -> $SCRIPT_DIR/reminders..."
   ln -sf "$SCRIPT_DIR/reminders" "$SYMLINK" || { echo "Symlink failed."; exit 1; }
   echo "Done. Run 'reminders' to get started."
   exit 0
+fi
+
+if [[ "$1" == "test" ]]; then
+  swift build --package-path "$SCRIPT_DIR" 2>&1 || { echo "Build failed."; exit 1; }
+  "$SCRIPT_DIR/.build/arm64-apple-macosx/debug/reminders-tests"
+  exit $?
 fi
 
 exec "$BINARY" "$@"

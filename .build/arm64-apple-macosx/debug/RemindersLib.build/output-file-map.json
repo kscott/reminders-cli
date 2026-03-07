@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Users/ken/dev/reminders-cli/.build/arm64-apple-macosx/debug/RemindersLib.build/master.swiftdeps"
+  },
+  "/Users/ken/dev/reminders-cli/Sources/RemindersLib/DateParsing.swift": {
+    "dependencies": "/Users/ken/dev/reminders-cli/.build/arm64-apple-macosx/debug/RemindersLib.build/DateParsing.d",
+    "object": "/Users/ken/dev/reminders-cli/.build/arm64-apple-macosx/debug/RemindersLib.build/DateParsing.swift.o",
+    "swiftmodule": "/Users/ken/dev/reminders-cli/.build/arm64-apple-macosx/debug/RemindersLib.build/DateParsing~partial.swiftmodule",
+    "swift-dependencies": "/Users/ken/dev/reminders-cli/.build/arm64-apple-macosx/debug/RemindersLib.build/DateParsing.swiftdeps",
+    "diagnostics": "/Users/ken/dev/reminders-cli/.build/arm64-apple-macosx/debug/RemindersLib.build/DateParsing.dia"
+  }
+}
