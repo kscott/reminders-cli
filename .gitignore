@@ -1,0 +1,3 @@
+# Compiled binary — build locally with `./reminders setup`
+reminders-bin
+.DS_Store

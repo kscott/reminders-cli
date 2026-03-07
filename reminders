@@ -1,0 +1,27 @@
+#!/bin/bash
+# reminders — wrapper script for reminders-bin
+#
+# Source lives at:  ~/dev/reminders-cli/
+# Binary lives at:  ~/bin/reminders-bin
+# Symlink at:       ~/bin/reminders -> ~/dev/reminders-cli/reminders
+#
+# To set up on a new machine:
+#   ~/dev/reminders-cli/reminders setup
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+SOURCE="$SCRIPT_DIR/reminders-bin.swift"
+BINARY="$HOME/bin/reminders-bin"
+SYMLINK="$HOME/bin/reminders"
+
+if [[ "$1" == "setup" ]]; then
+  echo "Compiling $SOURCE -> $BINARY..."
+  swiftc "$SOURCE" -o "$BINARY" || { echo "Compilation failed."; exit 1; }
+  echo "Compiled OK."
+
+  echo "Creating symlink $SYMLINK -> $SCRIPT_DIR/reminders..."
+  ln -sf "$SCRIPT_DIR/reminders" "$SYMLINK" || { echo "Symlink failed."; exit 1; }
+  echo "Done. Run 'reminders' to get started."
+  exit 0
+fi
+
+exec "$BINARY" "$@"
