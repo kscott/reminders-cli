@@ -7,6 +7,7 @@ Unlike AppleScript-based approaches, this tool talks to Reminders via the native
 ## Commands
 
 ```
+reminders open                               # Open the Reminders app
 reminders lists                              # Show all reminder lists
 reminders list [list-name]                   # List incomplete reminders
 reminders create <title> [list] [due date]   # Create a reminder (default: iCloud default list)
@@ -28,7 +29,7 @@ If no time is given, defaults to 9:00 AM. If a date has already passed this year
 
 ## Setup
 
-Requires macOS with Swift installed (comes with Xcode command line tools).
+Requires macOS 14+ with Swift installed (comes with Xcode command line tools).
 
 ```bash
 # Clone and set up
@@ -36,9 +37,35 @@ git clone git@github.com:kscott/reminders-cli.git ~/dev/reminders-cli
 ~/dev/reminders-cli/reminders setup
 ```
 
-`setup` compiles the Swift source into `~/bin/reminders-bin` and symlinks `~/bin/reminders` to the wrapper script. Make sure `~/bin` is in your `$PATH`.
+`setup` builds the Swift package, installs the binary to `~/bin/reminders-bin`, and symlinks `~/bin/reminders` to the wrapper script. Make sure `~/bin` is in your `$PATH`.
 
 On first run, macOS will prompt you to grant Reminders access.
+
+## Project structure
+
+```
+reminders-cli/
+├── Package.swift                        # Swift Package Manager manifest
+├── reminders                            # Wrapper script (symlinked into ~/bin)
+├── Sources/
+│   ├── RemindersLib/
+│   │   └── DateParsing.swift            # Date parsing logic (no Apple framework deps)
+│   └── RemindersCLI/
+│       └── main.swift                   # CLI entry point (EventKit + AppKit)
+└── Tests/
+    └── RemindersLibTests/
+        └── main.swift                   # Test runner (no Xcode required)
+```
+
+`RemindersLib` is kept separate from the EventKit code so it can be unit tested without permissions or framework dependencies.
+
+## Tests
+
+```bash
+reminders test
+```
+
+Builds and runs the test suite against the date parsing logic. No Xcode required.
 
 ## Known limitations
 
