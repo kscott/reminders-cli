@@ -53,7 +53,7 @@ func usage() -> Never {
       reminders open                               # Open the Reminders app
       reminders lists                              # Show all reminder lists
       reminders list [list-name]                   # List incomplete reminders
-      reminders create <title> [list] [due date]   # Create a reminder (default list: Reminders)
+      reminders create <title> [list] [due date]   # Create a reminder (default: iCloud default list)
       reminders complete <title> [list]            # Mark a reminder complete
       reminders delete <title> [list]              # Delete a reminder
 
@@ -221,7 +221,7 @@ store.requestFullAccessToReminders { granted, _ in
         // Everything after (or all extra args if no list match) is parsed as a due date string.
         guard args.count > 1 else { fail("provide a reminder title") }
         let title = args[1]
-        var listName = "Reminders"
+        var listName: String? = nil
         var dueDate: Date? = nil
 
         if args.count > 2 {
@@ -238,9 +238,9 @@ store.requestFullAccessToReminders { granted, _ in
         }
 
         let defaultCal = store.defaultCalendarForNewReminders()
-        guard let cal = store.calendars(for: .reminder).first(where: { $0.title == listName })
+        guard let cal = listName.flatMap({ name in store.calendars(for: .reminder).first(where: { $0.title == name }) })
                      ?? defaultCal else {
-            fail("List not found: \(listName)")
+            fail("List not found: \(listName ?? "default")")
         }
         let reminder = EKReminder(eventStore: store)
         reminder.title = title

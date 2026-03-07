@@ -9,7 +9,7 @@ Unlike AppleScript-based approaches, this tool talks to Reminders via the native
 ```
 reminders lists                              # Show all reminder lists
 reminders list [list-name]                   # List incomplete reminders
-reminders create <title> [list] [due date]   # Create a reminder (default list: Reminders)
+reminders create <title> [list] [due date]   # Create a reminder (default: iCloud default list)
 reminders complete <title> [list]            # Mark a reminder complete
 reminders delete <title> [list]              # Delete a reminder
 ```
