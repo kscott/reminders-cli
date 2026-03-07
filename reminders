@@ -31,7 +31,8 @@ fi
 
 if [[ "$1" == "test" ]]; then
   swift build --package-path "$SCRIPT_DIR" 2>&1 || { echo "Build failed."; exit 1; }
-  "$SCRIPT_DIR/.build/arm64-apple-macosx/debug/reminders-tests"
+  BIN_PATH="$(swift build --package-path "$SCRIPT_DIR" --show-bin-path 2>/dev/null)"
+  "$BIN_PATH/reminders-tests"
   exit $?
 fi
 
