@@ -35,6 +35,7 @@
 // (~0.05-0.35s per command) because EventKit caches data locally from iCloud.
 
 import Foundation
+import AppKit
 import EventKit
 
 let store = EKEventStore()
@@ -49,6 +50,7 @@ func fail(_ msg: String) -> Never {
 func usage() -> Never {
     print("""
     Usage:
+      reminders open                               # Open the Reminders app
       reminders lists                              # Show all reminder lists
       reminders list [list-name]                   # List incomplete reminders
       reminders create <title> [list] [due date]   # Create a reminder (default list: Reminders)
@@ -174,6 +176,10 @@ store.requestFullAccessToReminders { granted, _ in
     guard granted else { fail("Reminders access denied") }
 
     switch cmd {
+
+    case "open":
+        NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Reminders.app"))
+        semaphore.signal()
 
     case "lists":
         let names = store.calendars(for: .reminder).map { $0.title }.sorted()
