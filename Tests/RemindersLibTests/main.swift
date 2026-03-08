@@ -37,77 +37,81 @@ final class TestRunner: @unchecked Sendable {
             cal.dateComponents([.hour, .minute], from: date)
         }
 
-        suite("Default time") {
-            let date = parseDate("tomorrow")!
-            expect("defaults to 9:00 AM", hm(date).hour == 9 && hm(date).minute == 0)
+        suite("hasTime flag") {
+            expect("date only — hasTime false",  parseDate("tomorrow")?.hasTime   == false)
+            expect("date only — hasTime false",  parseDate("friday")?.hasTime     == false)
+            expect("date only — hasTime false",  parseDate("march 15")?.hasTime   == false)
+            expect("time included — hasTime true", parseDate("3pm")?.hasTime      == true)
+            expect("time included — hasTime true", parseDate("tomorrow 3pm")?.hasTime == true)
+            expect("time included — hasTime true", parseDate("friday at 5pm")?.hasTime == true)
         }
 
         suite("Relative days") {
-            expect("today matches current date", ymd(parseDate("today")!) == ymd(Date()))
+            expect("today matches current date", ymd(parseDate("today")!.date) == ymd(Date()))
             let tomorrow = ymd(cal.date(byAdding: .day, value: 1, to: Date())!)
-            expect("tomorrow is tomorrow", ymd(parseDate("tomorrow")!) == tomorrow)
+            expect("tomorrow is tomorrow", ymd(parseDate("tomorrow")!.date) == tomorrow)
         }
 
         suite("Weekdays") {
             let weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
             let oneWeekFromNow = cal.date(byAdding: .day, value: 7, to: Date())!
             for day in weekdays {
-                let date = parseDate(day)!
-                expect("\(day) is in the future", date > Date())
-                expect("\(day) is within 7 days", date <= oneWeekFromNow)
+                let pd = parseDate(day)!
+                expect("\(day) is in the future", pd.date > Date())
+                expect("\(day) is within 7 days", pd.date <= oneWeekFromNow)
             }
         }
 
         suite("Month + day") {
-            let date = parseDate("march 15")!
-            expect("march 15 — correct month", ymd(date).month == 3)
-            expect("march 15 — correct day",   ymd(date).day   == 15)
+            let pd = parseDate("march 15")!
+            expect("march 15 — correct month", ymd(pd.date).month == 3)
+            expect("march 15 — correct day",   ymd(pd.date).day   == 15)
             let jan1 = parseDate("january 1")!
-            expect("january 1 rolls to future if past", jan1 >= Date())
+            expect("january 1 rolls to future if past", jan1.date >= Date())
         }
 
         suite("Numeric dates") {
             let iso = parseDate("2026-03-15")!
-            expect("ISO year",  ymd(iso).year  == 2026)
-            expect("ISO month", ymd(iso).month == 3)
-            expect("ISO day",   ymd(iso).day   == 15)
+            expect("ISO year",  ymd(iso.date).year  == 2026)
+            expect("ISO month", ymd(iso.date).month == 3)
+            expect("ISO day",   ymd(iso.date).day   == 15)
 
             let slash = parseDate("3/15")!
-            expect("3/15 month", ymd(slash).month == 3)
-            expect("3/15 day",   ymd(slash).day   == 15)
+            expect("3/15 month", ymd(slash.date).month == 3)
+            expect("3/15 day",   ymd(slash.date).day   == 15)
 
             let dash = parseDate("3-15")!
-            expect("3-15 month", ymd(dash).month == 3)
-            expect("3-15 day",   ymd(dash).day   == 15)
+            expect("3-15 month", ymd(dash.date).month == 3)
+            expect("3-15 day",   ymd(dash.date).day   == 15)
 
-            expect("1/1 rolls to future if past", parseDate("1/1")! >= Date())
+            expect("1/1 rolls to future if past", parseDate("1/1")!.date >= Date())
         }
 
         suite("Time parsing") {
-            expect("3pm is hour 15",   hm(parseDate("3pm")!).hour  == 15)
-            expect("10am is hour 10",  hm(parseDate("10am")!).hour == 10)
-            expect("12pm is noon",     hm(parseDate("12pm")!).hour == 12)
-            expect("12am is midnight", hm(parseDate("12am")!).hour == 0)
-            expect("14:30 hour",       hm(parseDate("14:30")!).hour   == 14)
-            expect("14:30 minute",     hm(parseDate("14:30")!).minute == 30)
-            expect("2:45pm hour",      hm(parseDate("2:45pm")!).hour   == 14)
-            expect("2:45pm minute",    hm(parseDate("2:45pm")!).minute == 45)
+            expect("3pm is hour 15",   hm(parseDate("3pm")!.date).hour  == 15)
+            expect("10am is hour 10",  hm(parseDate("10am")!.date).hour == 10)
+            expect("12pm is noon",     hm(parseDate("12pm")!.date).hour == 12)
+            expect("12am is midnight", hm(parseDate("12am")!.date).hour == 0)
+            expect("14:30 hour",       hm(parseDate("14:30")!.date).hour   == 14)
+            expect("14:30 minute",     hm(parseDate("14:30")!.date).minute == 30)
+            expect("2:45pm hour",      hm(parseDate("2:45pm")!.date).hour   == 14)
+            expect("2:45pm minute",    hm(parseDate("2:45pm")!.date).minute == 45)
         }
 
         suite("Combined day + time") {
             let t1 = parseDate("tomorrow 3pm")!
             let tomorrow = ymd(cal.date(byAdding: .day, value: 1, to: Date())!)
-            expect("tomorrow 3pm — correct day",  ymd(t1) == tomorrow)
-            expect("tomorrow 3pm — correct time", hm(t1).hour == 15)
+            expect("tomorrow 3pm — correct day",  ymd(t1.date) == tomorrow)
+            expect("tomorrow 3pm — correct time", hm(t1.date).hour == 15)
 
             let t2 = parseDate("friday at 5pm")!
-            expect("friday at 5pm — in the future", t2 > Date())
-            expect("friday at 5pm — correct time",  hm(t2).hour == 17)
+            expect("friday at 5pm — in the future", t2.date > Date())
+            expect("friday at 5pm — correct time",  hm(t2.date).hour == 17)
 
             let t3 = parseDate("march 15 9am")!
-            expect("march 15 9am — month", ymd(t3).month == 3)
-            expect("march 15 9am — day",   ymd(t3).day   == 15)
-            expect("march 15 9am — hour",  hm(t3).hour   == 9)
+            expect("march 15 9am — month", ymd(t3.date).month == 3)
+            expect("march 15 9am — day",   ymd(t3.date).day   == 15)
+            expect("march 15 9am — hour",  hm(t3.date).hour   == 9)
         }
 
         suite("Invalid input") {

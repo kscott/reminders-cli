@@ -124,7 +124,7 @@ store.requestFullAccessToReminders { granted, _ in
 
         let title = args[1]
         var listName: String? = nil
-        var dueDate: Date? = nil
+        var parsedDate: ParsedDate? = nil
         var recurrenceSpec: RecurrenceSpec? = nil
 
         var opts = ParsedOptions()
@@ -140,7 +140,7 @@ store.requestFullAccessToReminders { granted, _ in
             }
             opts = parseOptions(rawString)
         }
-        if !opts.date.isEmpty { dueDate = parseDate(opts.date) }
+        if !opts.date.isEmpty { parsedDate = parseDate(opts.date) }
         if !opts.recurrence.isEmpty {
             guard let spec = parseRecurrence(opts.recurrence) else {
                 fail("Unrecognised repeat: \"\(opts.recurrence)\"")
@@ -156,18 +156,19 @@ store.requestFullAccessToReminders { granted, _ in
         let reminder = EKReminder(eventStore: store)
         reminder.title = title
         reminder.calendar = cal
-        if let dueDate {
-            reminder.dueDateComponents = Calendar.current.dateComponents(
-                [.year, .month, .day, .hour, .minute], from: dueDate)
+        if let pd = parsedDate {
+            let comps: Set<Calendar.Component> = pd.hasTime
+                ? [.year, .month, .day, .hour, .minute] : [.year, .month, .day]
+            reminder.dueDateComponents = Calendar.current.dateComponents(comps, from: pd.date)
         }
-        if let spec = recurrenceSpec          { reminder.addRecurrenceRule(toEKRule(spec)) }
+        if let spec = recurrenceSpec            { reminder.addRecurrenceRule(toEKRule(spec)) }
         if let p = parsePriority(opts.priority) { reminder.priority = p }
-        if !opts.note.isEmpty                 { reminder.notes = opts.note }
-        if let u = URL(string: opts.url), !opts.url.isEmpty { reminder.url = u }
+        if !opts.note.isEmpty                   { reminder.notes = opts.note }
+        if !opts.url.isEmpty, let u = URL(string: opts.url) { reminder.url = u }
         do {
             try store.save(reminder, commit: true)
             var parts = ["Created: \(title) (in \(cal.title))"]
-            if let d = dueDate              { parts.append("due \(formatDate(d))") }
+            if let pd = parsedDate          { parts.append("due \(formatDate(pd.date, showTime: pd.hasTime))") }
             if let s = recurrenceSpec       { parts.append(describeRecurrence(s)) }
             if !opts.priority.isEmpty       { parts.append("priority \(opts.priority)") }
             if !opts.note.isEmpty           { parts.append("+ note") }
@@ -231,10 +232,11 @@ store.requestFullAccessToReminders { granted, _ in
 
             if let str = newDateRepeat {
                 let opts = parseOptions(str)
-                if !opts.date.isEmpty, let date = parseDate(opts.date) {
-                    reminder.dueDateComponents = Calendar.current.dateComponents(
-                        [.year, .month, .day, .hour, .minute], from: date)
-                    changes.append("due → \(formatDate(date))")
+                if !opts.date.isEmpty, let pd = parseDate(opts.date) {
+                    let comps: Set<Calendar.Component> = pd.hasTime
+                        ? [.year, .month, .day, .hour, .minute] : [.year, .month, .day]
+                    reminder.dueDateComponents = Calendar.current.dateComponents(comps, from: pd.date)
+                    changes.append("due → \(formatDate(pd.date, showTime: pd.hasTime))")
                 }
                 if !opts.recurrence.isEmpty {
                     guard let spec = parseRecurrence(opts.recurrence) else {

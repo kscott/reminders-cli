@@ -1,6 +1,6 @@
 // DateParsing.swift
 //
-// Parses natural-language date strings into Date values.
+// Parses natural-language date strings into ParsedDate values.
 // Kept separate from EventKit code so it can be unit tested without
 // any Apple framework dependencies or permissions.
 //
@@ -13,20 +13,30 @@
 //   Time only:      "3pm", "14:30"       (defaults to today)
 //   Combined:       "tomorrow 3pm", "friday at 5pm", "march 15 9am"
 //
-// Default time when none is specified: 9:00 AM.
+// When no time is specified, hasTime is false and callers should set
+// date-only components — no alarm time is implied.
 
 import Foundation
 
-public func parseDate(_ input: String) -> Date? {
+public struct ParsedDate {
+    public let date: Date
+    /// True when the input explicitly included a time ("3pm", "at 14:30", etc.)
+    public let hasTime: Bool
+
+    public init(date: Date, hasTime: Bool) {
+        self.date    = date
+        self.hasTime = hasTime
+    }
+}
+
+public func parseDate(_ input: String) -> ParsedDate? {
     let s = input.lowercased().trimmingCharacters(in: .whitespaces)
     let cal = Calendar.current
     let now = Date()
     var components = cal.dateComponents([.year, .month, .day, .hour, .minute], from: now)
-    components.hour = 9
+    components.hour   = 9
     components.minute = 0
 
-    // Patterns that match a time expression; checked against the full string
-    // so we can strip it out and parse the remaining day part separately.
     let timePatterns = [
         #"(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)"#,
         #"(?:at\s+)?(\d{1,2}):(\d{2})$"#
@@ -46,7 +56,6 @@ public func parseDate(_ input: String) -> Date? {
         }
     }
 
-    // Parse time component
     if let timePart {
         let tp = timePart.replacingOccurrences(of: "at ", with: "")
         if let hourRange = tp.range(of: #"(\d{1,2})(?::(\d{2}))?\s*(am|pm)?"#, options: .regularExpression) {
@@ -65,7 +74,6 @@ public func parseDate(_ input: String) -> Date? {
         }
     }
 
-    // Parse day component
     let weekdays = ["sunday":1,"monday":2,"tuesday":3,"wednesday":4,
                     "thursday":5,"friday":6,"saturday":7]
     let months   = ["january":1,"february":2,"march":3,"april":4,"may":5,"june":6,
@@ -80,7 +88,6 @@ public func parseDate(_ input: String) -> Date? {
         let tc = cal.dateComponents([.year, .month, .day], from: tomorrow)
         components.year = tc.year; components.month = tc.month; components.day = tc.day
     } else if let weekdayNum = weekdays[dayTrimmed] {
-        // Next future occurrence of the named weekday
         var dc = DateComponents(); dc.weekday = weekdayNum
         if let next = cal.nextDate(after: now, matching: dc, matchingPolicy: .nextTime) {
             let nc = cal.dateComponents([.year, .month, .day], from: next)
@@ -89,13 +96,11 @@ public func parseDate(_ input: String) -> Date? {
     } else {
         let parts = dayTrimmed.split(separator: " ").map(String.init)
         if parts.count == 2, let monthNum = months[parts[0]], let day = Int(parts[1]) {
-            // "march 15" — rolls to next year if already past
             components.month = monthNum; components.day = day
             if let d = cal.date(from: components), d < now {
                 components.year = (components.year ?? 0) + 1
             }
         } else if parts.count == 1 {
-            // Numeric formats: "2026-03-15", "3/15", "3-15"
             let numParts = parts[0].components(separatedBy: CharacterSet(charactersIn: "/-"))
             if numParts.count == 3,
                let y = Int(numParts[0]), let m = Int(numParts[1]), let d = Int(numParts[2]) {
@@ -114,12 +119,13 @@ public func parseDate(_ input: String) -> Date? {
         }
     }
 
-    return cal.date(from: components)
+    guard let date = cal.date(from: components) else { return nil }
+    return ParsedDate(date: date, hasTime: timePart != nil)
 }
 
-public func formatDate(_ date: Date) -> String {
+public func formatDate(_ date: Date, showTime: Bool) -> String {
     let f = DateFormatter()
     f.dateStyle = .medium
-    f.timeStyle = .short
+    f.timeStyle = showTime ? .short : .none
     return f.string(from: date)
 }
