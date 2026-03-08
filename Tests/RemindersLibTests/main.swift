@@ -115,6 +115,108 @@ final class TestRunner: @unchecked Sendable {
             expect("nonsense returns nil", parseDate("banana")     == nil)
         }
 
+        suite("Recurrence — simple keywords") {
+            expect("daily",    parseRecurrence("daily")?.frequency   == .daily)
+            expect("weekly",   parseRecurrence("weekly")?.frequency  == .weekly)
+            expect("monthly",  parseRecurrence("monthly")?.frequency == .monthly)
+            expect("yearly",   parseRecurrence("yearly")?.frequency  == .yearly)
+            expect("annually", parseRecurrence("annually")?.frequency == .yearly)
+            expect("every day",   parseRecurrence("every day")?.frequency   == .daily)
+            expect("every week",  parseRecurrence("every week")?.frequency  == .weekly)
+            expect("every month", parseRecurrence("every month")?.frequency == .monthly)
+            expect("every year",  parseRecurrence("every year")?.frequency  == .yearly)
+            expect("simple has interval 1", parseRecurrence("weekly")?.interval == 1)
+            expect("simple has no ordinal", parseRecurrence("weekly")?.ordinalWeekday == nil)
+            expect("unknown returns nil",   parseRecurrence("banana") == nil)
+        }
+
+        suite("Recurrence — intervals") {
+            let e2w = parseRecurrence("every 2 weeks")
+            expect("every 2 weeks — frequency", e2w?.frequency == .weekly)
+            expect("every 2 weeks — interval",  e2w?.interval  == 2)
+
+            let e3m = parseRecurrence("every 3 months")
+            expect("every 3 months — frequency", e3m?.frequency == .monthly)
+            expect("every 3 months — interval",  e3m?.interval  == 3)
+
+            let e6d = parseRecurrence("every 6 days")
+            expect("every 6 days — frequency", e6d?.frequency == .daily)
+            expect("every 6 days — interval",  e6d?.interval  == 6)
+
+            let e2y = parseRecurrence("every 2 years")
+            expect("every 2 years — frequency", e2y?.frequency == .yearly)
+            expect("every 2 years — interval",  e2y?.interval  == 2)
+        }
+
+        suite("Recurrence — ordinal weekday") {
+            let lastTue = parseRecurrence("last tuesday")
+            expect("last tuesday — monthly",     lastTue?.frequency             == .monthly)
+            expect("last tuesday — weekNumber",  lastTue?.ordinalWeekday?.weekNumber == -1)
+            expect("last tuesday — weekday",     lastTue?.ordinalWeekday?.weekday    == 3) // Tue
+
+            let firstFri = parseRecurrence("first friday")
+            expect("first friday — weekNumber",  firstFri?.ordinalWeekday?.weekNumber == 1)
+            expect("first friday — weekday",     firstFri?.ordinalWeekday?.weekday    == 6) // Fri
+
+            let secondMon = parseRecurrence("second monday")
+            expect("second monday — weekNumber", secondMon?.ordinalWeekday?.weekNumber == 2)
+            expect("second monday — weekday",    secondMon?.ordinalWeekday?.weekday    == 2) // Mon
+
+            let thirdWed = parseRecurrence("third wednesday")
+            expect("third wednesday — weekNumber", thirdWed?.ordinalWeekday?.weekNumber == 3)
+            expect("third wednesday — weekday",    thirdWed?.ordinalWeekday?.weekday    == 4) // Wed
+
+            let fourthSun = parseRecurrence("fourth sunday")
+            expect("fourth sunday — weekNumber", fourthSun?.ordinalWeekday?.weekNumber == 4)
+            expect("fourth sunday — weekday",    fourthSun?.ordinalWeekday?.weekday    == 1) // Sun
+        }
+
+        suite("Recurrence — splitOnRepeat") {
+            // keyword variants
+            let kw = ["repeat", "repeats", "repeating", "repeated"]
+            for word in kw {
+                let (d, r) = splitOnRepeat("march 1 \(word) monthly")
+                expect("\(word): date part",      d == "march 1")
+                expect("\(word): recurrence part", r == "monthly")
+            }
+
+            // repeat before date
+            let (d1, r1) = splitOnRepeat("repeat daily")
+            expect("repeat before date: date empty",      d1 == "")
+            expect("repeat before date: recurrence part", r1 == "daily")
+
+            // repeat after date+time
+            let (d2, r2) = splitOnRepeat("tuesday at 3pm repeating weekly")
+            expect("after date+time: date part",      d2 == "tuesday at 3pm")
+            expect("after date+time: recurrence part", r2 == "weekly")
+
+            // no repeat keyword
+            let (d3, r3) = splitOnRepeat("tuesday at 3pm")
+            expect("no keyword: full string as date", d3 == "tuesday at 3pm")
+            expect("no keyword: recurrence empty",    r3 == "")
+
+            // ordinal after keyword
+            let (d4, r4) = splitOnRepeat("repeating last tuesday")
+            expect("ordinal: date empty",      d4 == "")
+            expect("ordinal: recurrence part", r4 == "last tuesday")
+        }
+
+        suite("Recurrence — descriptions") {
+            let daily = RecurrenceSpec(frequency: .daily, interval: 1, ordinalWeekday: nil)
+            expect("describe daily",   describeRecurrence(daily)   == "repeat daily")
+
+            let e2w = RecurrenceSpec(frequency: .weekly, interval: 2, ordinalWeekday: nil)
+            expect("describe every 2 weeks", describeRecurrence(e2w) == "repeat every 2 weeks")
+
+            let lastTue = RecurrenceSpec(frequency: .monthly, interval: 1,
+                                         ordinalWeekday: .init(weekday: 3, weekNumber: -1))
+            expect("describe last tuesday", describeRecurrence(lastTue) == "repeat last tuesday of the month")
+
+            let firstFri = RecurrenceSpec(frequency: .monthly, interval: 1,
+                                          ordinalWeekday: .init(weekday: 6, weekNumber: 1))
+            expect("describe first friday", describeRecurrence(firstFri) == "repeat first friday of the month")
+        }
+
         print("\n\(passed + failed) tests: \(passed) passed, \(failed) failed")
         if failed > 0 { exit(1) }
     }

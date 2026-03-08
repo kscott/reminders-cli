@@ -21,17 +21,38 @@ func fail(_ msg: String) -> Never {
 func usage() -> Never {
     print("""
     Usage:
-      reminders open                               # Open the Reminders app
-      reminders lists                              # Show all reminder lists
-      reminders list [list-name]                   # List incomplete reminders
-      reminders create <title> [list] [due date]   # Create a reminder (default: iCloud default list)
-      reminders complete <title> [list]            # Mark a reminder complete
-      reminders delete <title> [list]              # Delete a reminder
+      reminders open                             # Open the Reminders app
+      reminders lists                            # Show all reminder lists
+      reminders list [list-name]                 # List incomplete reminders
+      reminders create <title> [list] [date]     # Create a reminder
+      reminders complete <title> [list]          # Mark a reminder complete
+      reminders delete <title> [list]            # Delete a reminder
 
-    Due date examples:
-      "tomorrow", "friday", "march 15", "2026-03-10", "3pm", "tomorrow 3pm", "friday at 5pm"
+    Date examples:
+      tomorrow, friday, "march 15", "2026-03-10", 3pm, "tomorrow 3pm", "friday at 5pm"
+
+    Repeat — use the word "repeat" in the date portion:
+      reminders create "Take vitamins" "repeat daily"
+      reminders create "Team standup" Work "monday 9am repeat weekly"
+      reminders create "Pay rent" "march 1 repeat monthly"
+      reminders create "Book club" "repeat last tuesday"
+      reminders create "Gym" "repeat every 2 days"
     """)
     exit(0)
+}
+
+func toEKRule(_ spec: RecurrenceSpec) -> EKRecurrenceRule {
+    let ekFreqs: [RecurrenceFrequency: EKRecurrenceFrequency] =
+        [.daily:.daily, .weekly:.weekly, .monthly:.monthly, .yearly:.yearly]
+    if let ow = spec.ordinalWeekday {
+        let dow = EKRecurrenceDayOfWeek(dayOfTheWeek: EKWeekday(rawValue: ow.weekday)!,
+                                        weekNumber: ow.weekNumber)
+        return EKRecurrenceRule(recurrenceWith: .monthly, interval: 1,
+                                daysOfTheWeek: [dow], daysOfTheMonth: nil,
+                                monthsOfTheYear: nil, weeksOfTheYear: nil,
+                                daysOfTheYear: nil, setPositions: nil, end: nil)
+    }
+    return EKRecurrenceRule(recurrenceWith: ekFreqs[spec.frequency]!, interval: spec.interval, end: nil)
 }
 
 guard let cmd = args.first else { usage() }
@@ -80,25 +101,29 @@ store.requestFullAccessToReminders { granted, _ in
         }
 
     case "create":
-        // Args: create <title> [list] [due date]
-        // List detection: if the first extra arg matches a known list name, treat it as the list.
-        // Everything after (or all extra args if no list match) is parsed as a due date string.
+        // Args: create <title> [list] [date [repeat freq]]
+        // List detection: first extra arg matching a known list name is the list.
+        // The remaining string is split on the word "repeat": left = due date, right = recurrence.
         guard args.count > 1 else { fail("provide a reminder title") }
+
         let title = args[1]
         var listName: String? = nil
         var dueDate: Date? = nil
+        var recurrenceSpec: RecurrenceSpec? = nil
 
         if args.count > 2 {
             let remaining = Array(args.dropFirst(2))
             let knownLists = store.calendars(for: .reminder).map { $0.title }
+            let rawString: String
             if knownLists.contains(remaining[0]) {
                 listName = remaining[0]
-                if remaining.count > 1 {
-                    dueDate = parseDate(remaining.dropFirst().joined(separator: " "))
-                }
+                rawString = remaining.dropFirst().joined(separator: " ")
             } else {
-                dueDate = parseDate(remaining.joined(separator: " "))
+                rawString = remaining.joined(separator: " ")
             }
+            let (datePart, repeatPart) = splitOnRepeat(rawString)
+            if !datePart.isEmpty  { dueDate        = parseDate(datePart) }
+            if !repeatPart.isEmpty { recurrenceSpec = parseRecurrence(repeatPart) }
         }
 
         let defaultCal = store.defaultCalendarForNewReminders()
@@ -113,10 +138,14 @@ store.requestFullAccessToReminders { granted, _ in
             reminder.dueDateComponents = Calendar.current.dateComponents(
                 [.year, .month, .day, .hour, .minute], from: dueDate)
         }
+        if let spec = recurrenceSpec {
+            reminder.addRecurrenceRule(toEKRule(spec))
+        }
         do {
             try store.save(reminder, commit: true)
-            let dateStr = dueDate.map { " due \(formatDate($0))" } ?? ""
-            print("Created: \(title) (in \(cal.title))\(dateStr)")
+            let dateStr   = dueDate.map { " due \(formatDate($0))" } ?? ""
+            let repeatStr = recurrenceSpec.map { " " + describeRecurrence($0) } ?? ""
+            print("Created: \(title) (in \(cal.title))\(dateStr)\(repeatStr)")
         } catch {
             fail("Could not save reminder: \(error.localizedDescription)")
         }

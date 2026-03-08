@@ -11,13 +11,14 @@ reminders test    # build and run test suite
 
 Or directly via SPM:
 ```bash
-swift build -c release   # build
+swift build -c release   # build release
 swift build              # build debug (needed before running tests)
 ```
 
 ## Project structure
 
 - `Sources/RemindersLib/DateParsing.swift` — pure date parsing logic, no framework deps
+- `Sources/RemindersLib/RecurrenceParsing.swift` — pure recurrence parsing logic, no framework deps
 - `Sources/RemindersCLI/main.swift` — CLI entry point, all EventKit/AppKit code
 - `Tests/RemindersLibTests/main.swift` — custom test runner (no Xcode/XCTest required)
 - `reminders` — bash wrapper script, symlinked into `~/bin`
@@ -25,9 +26,32 @@ swift build              # build debug (needed before running tests)
 ## Key decisions
 
 - **EventKit over AppleScript** — AppleScript blocks the Reminders UI and is ~20x slower
-- **RemindersLib separated from RemindersCLI** — allows unit testing without entitlements
+- **RemindersLib separated from RemindersCLI** — allows unit testing without entitlements or permissions
 - **Custom test runner instead of XCTest** — works with CLT only, no full Xcode needed
 - **`reminders open` uses NSWorkspace** — non-blocking, doesn't require Reminders to be running
+- **RecurrenceSpec in RemindersLib** — parsing and description are pure functions, converted to EKRecurrenceRule in main.swift
+
+## Commands
+
+```
+reminders open
+reminders lists
+reminders list [list-name]
+reminders create <title> [list] [date]
+reminders complete <title> [list]
+reminders delete <title> [list]
+```
+
+## Repeat
+
+The word `repeat` in the date portion acts as a delimiter — left side is parsed as a date, right side as a recurrence:
+
+```
+reminders create "Pay rent" "march 1 repeat monthly"
+reminders create "Book club" "repeat last tuesday"
+```
+
+Formats: `daily`, `weekly`, `monthly`, `yearly`, `every 2 weeks`, `first monday`, `last tuesday`, etc.
 
 ## Known limitations
 

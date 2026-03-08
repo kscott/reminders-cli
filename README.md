@@ -7,19 +7,21 @@ Unlike AppleScript-based approaches, this tool talks to Reminders via the native
 ## Commands
 
 ```
-reminders open                               # Open the Reminders app
-reminders lists                              # Show all reminder lists
-reminders list [list-name]                   # List incomplete reminders
-reminders create <title> [list] [due date]   # Create a reminder (default: iCloud default list)
-reminders complete <title> [list]            # Mark a reminder complete
-reminders delete <title> [list]              # Delete a reminder
+reminders open                          # Open the Reminders app
+reminders lists                         # Show all reminder lists
+reminders list [list-name]              # List incomplete reminders
+reminders create <title> [list] [date]  # Create a reminder
+reminders complete <title> [list]       # Mark a reminder complete
+reminders delete <title> [list]         # Delete a reminder
 ```
 
-## Due date formats
+## Due dates and repeats
+
+The title must always be quoted (it's the first argument). Everything after that — list name, date, and repeat — can be typed naturally with or without quotes.
 
 ```
 reminders create "Call dentist" tomorrow
-reminders create "Submit report" "Reminders" friday
+reminders create "Submit report" Reminders friday
 reminders create "Team meeting" Work "tuesday at 2pm"
 reminders create "Pay rent" "march 1"
 reminders create "Follow up" "2026-04-10"
@@ -27,12 +29,41 @@ reminders create "Follow up" "2026-04-10"
 
 If no time is given, defaults to 9:00 AM. If a date has already passed this year, it rolls to next year.
 
+### Repeating reminders
+
+Include the word `repeat` (also `repeats`, `repeating`, or `repeated`) anywhere in the date — it acts as a separator between the date and the recurrence. Both of these are equivalent:
+
+```
+reminders create "Take vitamins" repeat daily
+reminders create "Take vitamins" "repeat daily"
+```
+
+The repeat word can come before or after the date:
+
+```
+reminders create "Team standup" Work monday 9am repeat weekly
+reminders create "Pay rent" march 1 repeats monthly
+reminders create "Book club" repeating last tuesday
+reminders create "Gym" repeat every 2 days
+reminders create "Monthly review" repeat first friday
+```
+
+Repeat formats:
+
+| Format | Example |
+|--------|---------|
+| Simple | `daily`, `weekly`, `monthly`, `yearly`, `annually` |
+| Natural | `every day`, `every week`, `every month`, `every year` |
+| Interval | `every 2 weeks`, `every 3 months`, `every 6 days` |
+| Ordinal weekday | `first monday`, `last tuesday`, `second friday`, `third wednesday`, `fourth sunday` |
+
+Ordinal rules repeat on that weekday each month (e.g. "last tuesday" = last Tuesday of every month).
+
 ## Setup
 
 Requires macOS 14+ with Swift installed (comes with Xcode command line tools).
 
 ```bash
-# Clone and set up
 git clone git@github.com:kscott/reminders-cli.git ~/dev/reminders-cli
 ~/dev/reminders-cli/reminders setup
 ```
@@ -49,7 +80,8 @@ reminders-cli/
 ├── reminders                            # Wrapper script (symlinked into ~/bin)
 ├── Sources/
 │   ├── RemindersLib/
-│   │   └── DateParsing.swift            # Date parsing logic (no Apple framework deps)
+│   │   ├── DateParsing.swift            # Date parsing logic (no Apple framework deps)
+│   │   └── RecurrenceParsing.swift      # Recurrence parsing logic (no Apple framework deps)
 │   └── RemindersCLI/
 │       └── main.swift                   # CLI entry point (EventKit + AppKit)
 └── Tests/
@@ -65,7 +97,7 @@ reminders-cli/
 reminders test
 ```
 
-Builds and runs the test suite against the date parsing logic. No Xcode required.
+Builds and runs the test suite against the date and recurrence parsing logic. No Xcode required.
 
 ## Known limitations
 
