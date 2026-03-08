@@ -7,12 +7,13 @@ Unlike AppleScript-based approaches, this tool talks to Reminders via the native
 ## Commands
 
 ```
-reminders open                          # Open the Reminders app
-reminders lists                         # Show all reminder lists
-reminders list [list-name]              # List incomplete reminders
-reminders create <title> [list] [date]  # Create a reminder
-reminders complete <title> [list]       # Mark a reminder complete
-reminders delete <title> [list]         # Delete a reminder
+reminders open                                    # Open the Reminders app
+reminders lists                                   # Show all reminder lists
+reminders list [list-name]                        # List incomplete reminders
+reminders create <title> [list] [date]            # Create a reminder
+reminders edit <title> [list] [date] [--title T]  # Edit due date, repeat, or title
+reminders complete <title> [list]                 # Mark a reminder complete
+reminders delete <title> [list]                   # Delete a reminder
 ```
 
 ## Due dates and repeats
@@ -98,6 +99,46 @@ reminders test
 ```
 
 Builds and runs the test suite against the date and recurrence parsing logic. No Xcode required.
+
+## Editing reminders
+
+`edit` finds a reminder by title and updates only the fields you specify — everything else is left as-is.
+
+**Find the exact title first:**
+```bash
+reminders list "Daily Life"
+```
+
+**Add or change a due date:**
+```bash
+reminders edit "Buy groceries" "Daily Life" friday
+reminders edit "Buy groceries" "Daily Life" "friday at 5pm"
+```
+
+**Add or change a repeat:**
+```bash
+reminders edit "Buy groceries" "Daily Life" repeat weekly
+reminders edit "Pay rent" "Daily Life" repeat monthly
+reminders edit "Book club" "Daily Life" repeat "last tuesday"
+```
+
+**Set both at once:**
+```bash
+reminders edit "Buy groceries" "Daily Life" friday repeat weekly
+reminders edit "Pay rent" "Daily Life" "march 1 repeat monthly"
+```
+
+**Rename a reminder:**
+```bash
+reminders edit "Buy groceries" "Daily Life" --title "Buy groceries and wine"
+```
+
+**Rename and update in one go:**
+```bash
+reminders edit "Buy groceries" "Daily Life" friday --title "Weekly shopping"
+```
+
+The list name is optional — if you leave it out, it searches all lists. Include it to be precise or if the same title appears in multiple lists.
 
 ## Known limitations
 

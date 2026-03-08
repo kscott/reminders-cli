@@ -38,9 +38,12 @@ reminders open
 reminders lists
 reminders list [list-name]
 reminders create <title> [list] [date]
+reminders edit <title> [list] [date] [--title "New Title"]
 reminders complete <title> [list]
 reminders delete <title> [list]
 ```
+
+`edit` updates only fields that are specified. `--title` is the one flag in the tool — necessary to distinguish the new name from the existing title used to find the reminder.
 
 ## Repeat
 

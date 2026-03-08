@@ -21,22 +21,21 @@ func fail(_ msg: String) -> Never {
 func usage() -> Never {
     print("""
     Usage:
-      reminders open                             # Open the Reminders app
-      reminders lists                            # Show all reminder lists
-      reminders list [list-name]                 # List incomplete reminders
-      reminders create <title> [list] [date]     # Create a reminder
-      reminders complete <title> [list]          # Mark a reminder complete
-      reminders delete <title> [list]            # Delete a reminder
+      reminders open                                    # Open the Reminders app
+      reminders lists                                   # Show all reminder lists
+      reminders list [list-name]                        # List incomplete reminders
+      reminders create <title> [list] [date]            # Create a reminder
+      reminders edit <title> [list] [date] [--title T]  # Edit due date, repeat, or title
+      reminders complete <title> [list]                 # Mark a reminder complete
+      reminders delete <title> [list]                   # Delete a reminder
 
     Date examples:
       tomorrow, friday, "march 15", "2026-03-10", 3pm, "tomorrow 3pm", "friday at 5pm"
 
     Repeat — use the word "repeat" in the date portion:
-      reminders create "Take vitamins" "repeat daily"
-      reminders create "Team standup" Work "monday 9am repeat weekly"
-      reminders create "Pay rent" "march 1 repeat monthly"
-      reminders create "Book club" "repeat last tuesday"
-      reminders create "Gym" "repeat every 2 days"
+      reminders create "Take vitamins" repeat daily
+      reminders create "Team standup" Work monday 9am repeat weekly
+      reminders edit "Pay rent" "Daily Life" repeat monthly
     """)
     exit(0)
 }
@@ -150,6 +149,82 @@ store.requestFullAccessToReminders { granted, _ in
             fail("Could not save reminder: \(error.localizedDescription)")
         }
         semaphore.signal()
+
+    case "edit":
+        // Args: edit <title> [list] [date] [--title "New Title"]
+        // Only fields that are specified are updated; others are left as-is.
+        guard args.count > 1 else { fail("provide a reminder title") }
+
+        var editArgs = Array(args)
+        var newTitle: String? = nil
+        if let idx = editArgs.firstIndex(of: "--title"), idx + 1 < editArgs.count {
+            newTitle = editArgs[idx + 1]
+            editArgs.remove(at: idx + 1)
+            editArgs.remove(at: idx)
+        }
+
+        let title = editArgs[1]
+        var listName: String? = nil
+        var newDateRepeat: String? = nil
+
+        if editArgs.count > 2 {
+            let remaining = Array(editArgs.dropFirst(2))
+            let knownLists = store.calendars(for: .reminder).map { $0.title }
+            if knownLists.contains(remaining[0]) {
+                listName = remaining[0]
+                if remaining.count > 1 { newDateRepeat = remaining.dropFirst().joined(separator: " ") }
+            } else {
+                newDateRepeat = remaining.joined(separator: " ")
+            }
+        }
+
+        let editCalendars: [EKCalendar]
+        if let listName {
+            guard let cal = store.calendars(for: .reminder).first(where: { $0.title == listName }) else {
+                fail("List not found: \(listName)")
+            }
+            editCalendars = [cal]
+        } else {
+            editCalendars = store.calendars(for: .reminder)
+        }
+
+        store.fetchReminders(matching: store.predicateForIncompleteReminders(
+                withDueDateStarting: nil, ending: nil, calendars: editCalendars)) { reminders in
+            guard let reminder = (reminders ?? []).first(where: { $0.title == title }) else {
+                fail("Not found: \(title)\(listName.map { " in \($0)" } ?? "")")
+            }
+
+            var changes: [String] = []
+
+            if let newTitle {
+                reminder.title = newTitle
+                changes.append("title → \"\(newTitle)\"")
+            }
+
+            if let str = newDateRepeat {
+                let (datePart, repeatPart) = splitOnRepeat(str)
+                if !datePart.isEmpty, let date = parseDate(datePart) {
+                    reminder.dueDateComponents = Calendar.current.dateComponents(
+                        [.year, .month, .day, .hour, .minute], from: date)
+                    changes.append("due → \(formatDate(date))")
+                }
+                if !repeatPart.isEmpty, let spec = parseRecurrence(repeatPart) {
+                    reminder.recurrenceRules?.forEach { reminder.removeRecurrenceRule($0) }
+                    reminder.addRecurrenceRule(toEKRule(spec))
+                    changes.append(describeRecurrence(spec))
+                }
+            }
+
+            guard !changes.isEmpty else { fail("nothing to change — specify a date, repeat, or --title") }
+
+            do {
+                try store.save(reminder, commit: true)
+                print("Updated \"\(title)\": \(changes.joined(separator: ", "))")
+            } catch {
+                fail("Could not save: \(error.localizedDescription)")
+            }
+            semaphore.signal()
+        }
 
     case "complete", "delete":
         guard args.count > 1 else { fail("provide a reminder title") }
