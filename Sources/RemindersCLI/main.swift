@@ -62,6 +62,12 @@ func toEKRule(_ spec: RecurrenceSpec) -> EKRecurrenceRule {
                                 monthsOfTheYear: nil, weeksOfTheYear: nil,
                                 daysOfTheYear: nil, setPositions: nil, end: nil)
     }
+    if let day = spec.dayOfMonth {
+        return EKRecurrenceRule(recurrenceWith: .monthly, interval: 1,
+                                daysOfTheWeek: nil, daysOfTheMonth: [NSNumber(value: day)],
+                                monthsOfTheYear: nil, weeksOfTheYear: nil,
+                                daysOfTheYear: nil, setPositions: nil, end: nil)
+    }
     return EKRecurrenceRule(recurrenceWith: ekFreqs[spec.frequency]!, interval: spec.interval, end: nil)
 }
 
@@ -134,8 +140,13 @@ store.requestFullAccessToReminders { granted, _ in
             }
             opts = parseOptions(rawString)
         }
-        if !opts.date.isEmpty       { dueDate        = parseDate(opts.date) }
-        if !opts.recurrence.isEmpty { recurrenceSpec = parseRecurrence(opts.recurrence) }
+        if !opts.date.isEmpty { dueDate = parseDate(opts.date) }
+        if !opts.recurrence.isEmpty {
+            guard let spec = parseRecurrence(opts.recurrence) else {
+                fail("Unrecognised repeat: \"\(opts.recurrence)\"")
+            }
+            recurrenceSpec = spec
+        }
 
         let defaultCal = store.defaultCalendarForNewReminders()
         guard let cal = listName.flatMap({ name in store.calendars(for: .reminder).first(where: { $0.title == name }) })
@@ -225,7 +236,10 @@ store.requestFullAccessToReminders { granted, _ in
                         [.year, .month, .day, .hour, .minute], from: date)
                     changes.append("due → \(formatDate(date))")
                 }
-                if !opts.recurrence.isEmpty, let spec = parseRecurrence(opts.recurrence) {
+                if !opts.recurrence.isEmpty {
+                    guard let spec = parseRecurrence(opts.recurrence) else {
+                        fail("Unrecognised repeat: \"\(opts.recurrence)\"")
+                    }
                     reminder.recurrenceRules?.forEach { reminder.removeRecurrenceRule($0) }
                     reminder.addRecurrenceRule(toEKRule(spec))
                     changes.append(describeRecurrence(spec))

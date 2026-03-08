@@ -148,27 +148,77 @@ final class TestRunner: @unchecked Sendable {
             expect("every 2 years — interval",  e2y?.interval  == 2)
         }
 
-        suite("Recurrence — ordinal weekday") {
+        suite("Recurrence — ordinal weekday (word)") {
             let lastTue = parseRecurrence("last tuesday")
-            expect("last tuesday — monthly",     lastTue?.frequency             == .monthly)
-            expect("last tuesday — weekNumber",  lastTue?.ordinalWeekday?.weekNumber == -1)
-            expect("last tuesday — weekday",     lastTue?.ordinalWeekday?.weekday    == 3) // Tue
+            expect("last tuesday — monthly",    lastTue?.frequency                  == .monthly)
+            expect("last tuesday — weekNumber", lastTue?.ordinalWeekday?.weekNumber == -1)
+            expect("last tuesday — weekday",    lastTue?.ordinalWeekday?.weekday    == 3)
 
             let firstFri = parseRecurrence("first friday")
-            expect("first friday — weekNumber",  firstFri?.ordinalWeekday?.weekNumber == 1)
-            expect("first friday — weekday",     firstFri?.ordinalWeekday?.weekday    == 6) // Fri
+            expect("first friday — weekNumber", firstFri?.ordinalWeekday?.weekNumber == 1)
+            expect("first friday — weekday",    firstFri?.ordinalWeekday?.weekday    == 6)
 
             let secondMon = parseRecurrence("second monday")
             expect("second monday — weekNumber", secondMon?.ordinalWeekday?.weekNumber == 2)
-            expect("second monday — weekday",    secondMon?.ordinalWeekday?.weekday    == 2) // Mon
+            expect("second monday — weekday",    secondMon?.ordinalWeekday?.weekday    == 2)
 
             let thirdWed = parseRecurrence("third wednesday")
             expect("third wednesday — weekNumber", thirdWed?.ordinalWeekday?.weekNumber == 3)
-            expect("third wednesday — weekday",    thirdWed?.ordinalWeekday?.weekday    == 4) // Wed
+            expect("third wednesday — weekday",    thirdWed?.ordinalWeekday?.weekday    == 4)
 
             let fourthSun = parseRecurrence("fourth sunday")
             expect("fourth sunday — weekNumber", fourthSun?.ordinalWeekday?.weekNumber == 4)
-            expect("fourth sunday — weekday",    fourthSun?.ordinalWeekday?.weekday    == 1) // Sun
+            expect("fourth sunday — weekday",    fourthSun?.ordinalWeekday?.weekday    == 1)
+
+            // leading articles are ignored
+            let withThe = parseRecurrence("the last wednesday")
+            expect("the last wednesday — weekNumber", withThe?.ordinalWeekday?.weekNumber == -1)
+            expect("the last wednesday — weekday",    withThe?.ordinalWeekday?.weekday    == 4)
+
+            let withOn = parseRecurrence("on the first friday")
+            expect("on the first friday — weekNumber", withOn?.ordinalWeekday?.weekNumber == 1)
+            expect("on the first friday — weekday",    withOn?.ordinalWeekday?.weekday    == 6)
+        }
+
+        suite("Recurrence — ordinal weekday (numeric)") {
+            let s1 = parseRecurrence("1st monday")
+            expect("1st monday — weekNumber", s1?.ordinalWeekday?.weekNumber == 1)
+            expect("1st monday — weekday",    s1?.ordinalWeekday?.weekday    == 2)
+
+            let s2 = parseRecurrence("2nd wednesday")
+            expect("2nd wednesday — weekNumber", s2?.ordinalWeekday?.weekNumber == 2)
+            expect("2nd wednesday — weekday",    s2?.ordinalWeekday?.weekday    == 4)
+
+            let s3 = parseRecurrence("3rd friday")
+            expect("3rd friday — weekNumber", s3?.ordinalWeekday?.weekNumber == 3)
+            expect("3rd friday — weekday",    s3?.ordinalWeekday?.weekday    == 6)
+
+            let s4 = parseRecurrence("4th thursday")
+            expect("4th thursday — weekNumber", s4?.ordinalWeekday?.weekNumber == 4)
+            expect("4th thursday — weekday",    s4?.ordinalWeekday?.weekday    == 5)
+        }
+
+        suite("Recurrence — day of month") {
+            let d1 = parseRecurrence("the 1st")
+            expect("the 1st — monthly",    d1?.frequency  == .monthly)
+            expect("the 1st — dayOfMonth", d1?.dayOfMonth == 1)
+
+            let d15 = parseRecurrence("the 15th")
+            expect("the 15th — dayOfMonth", d15?.dayOfMonth == 15)
+
+            let d22 = parseRecurrence("on the 22nd")
+            expect("on the 22nd — dayOfMonth", d22?.dayOfMonth == 22)
+
+            let dom = parseRecurrence("2nd of the month")
+            expect("2nd of the month — dayOfMonth", dom?.dayOfMonth == 2)
+
+            let dom2 = parseRecurrence("on the 1st of the month")
+            expect("on the 1st of the month — dayOfMonth", dom2?.dayOfMonth == 1)
+
+            // numeric ordinal weekday must NOT be confused with day-of-month
+            let notDay = parseRecurrence("2nd wednesday")
+            expect("2nd wednesday is not day-of-month", notDay?.dayOfMonth == nil)
+            expect("2nd wednesday is ordinal weekday",   notDay?.ordinalWeekday != nil)
         }
 
         suite("parseOptions — date only") {
@@ -264,10 +314,10 @@ final class TestRunner: @unchecked Sendable {
         }
 
         suite("Recurrence — descriptions") {
-            let daily = RecurrenceSpec(frequency: .daily, interval: 1, ordinalWeekday: nil)
+            let daily = RecurrenceSpec(frequency: .daily, interval: 1)
             expect("describe daily",   describeRecurrence(daily)   == "repeat daily")
 
-            let e2w = RecurrenceSpec(frequency: .weekly, interval: 2, ordinalWeekday: nil)
+            let e2w = RecurrenceSpec(frequency: .weekly, interval: 2)
             expect("describe every 2 weeks", describeRecurrence(e2w) == "repeat every 2 weeks")
 
             let lastTue = RecurrenceSpec(frequency: .monthly, interval: 1,
@@ -277,6 +327,18 @@ final class TestRunner: @unchecked Sendable {
             let firstFri = RecurrenceSpec(frequency: .monthly, interval: 1,
                                           ordinalWeekday: .init(weekday: 6, weekNumber: 1))
             expect("describe first friday", describeRecurrence(firstFri) == "repeat first friday of the month")
+
+            let dom1  = RecurrenceSpec(frequency: .monthly, interval: 1, dayOfMonth: 1)
+            expect("describe 1st of month",  describeRecurrence(dom1)  == "repeat on the 1st of the month")
+
+            let dom15 = RecurrenceSpec(frequency: .monthly, interval: 1, dayOfMonth: 15)
+            expect("describe 15th of month", describeRecurrence(dom15) == "repeat on the 15th of the month")
+
+            let dom22 = RecurrenceSpec(frequency: .monthly, interval: 1, dayOfMonth: 22)
+            expect("describe 22nd of month", describeRecurrence(dom22) == "repeat on the 22nd of the month")
+
+            let dom3  = RecurrenceSpec(frequency: .monthly, interval: 1, dayOfMonth: 3)
+            expect("describe 3rd of month",  describeRecurrence(dom3)  == "repeat on the 3rd of the month")
         }
 
         print("\n\(passed + failed) tests: \(passed) passed, \(failed) failed")

@@ -56,7 +56,7 @@ reminders create "Pay rent" march 1 repeat monthly priority high note pay via ba
 reminders edit "Call dentist" friday priority medium url https://dentist.com note ask about X-rays
 ```
 
-- `repeat`: `daily`, `weekly`, `monthly`, `yearly`, `every 2 weeks`, `last tuesday`, etc.
+- `repeat`: `daily`, `weekly`, `monthly`, `yearly`, `every 2 weeks`, `last tuesday`, `2nd friday`, `the 15th`, `on the 1st of the month`, etc. Unknown values error rather than silently doing nothing.
 - `priority`: `high`, `medium`, `low`, `none`
 - `url`: any URL string
 - `note`: free text to end of string (must be last)

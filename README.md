@@ -75,9 +75,12 @@ Repeat formats:
 | Simple | `daily`, `weekly`, `monthly`, `yearly`, `annually` |
 | Natural | `every day`, `every week`, `every month`, `every year` |
 | Interval | `every 2 weeks`, `every 3 months`, `every 6 days` |
-| Ordinal weekday | `first monday`, `last tuesday`, `second friday`, `third wednesday`, `fourth sunday` |
+| Ordinal weekday | `first monday`, `last tuesday`, `2nd friday`, `3rd wednesday`, `4th thursday` |
+| Day of month | `the 1st`, `on the 15th`, `2nd of the month`, `on the 22nd` |
 
-Ordinal rules repeat on that weekday each month (e.g. "last tuesday" = last Tuesday of every month).
+Ordinal weekday rules repeat on that weekday each month. Leading words like "the" and "on the" are ignored, so `the last wednesday` and `on the first friday` both work naturally.
+
+Day-of-month rules repeat on a fixed date each month — useful for things like bills or payroll.
 
 ## Setup
 
