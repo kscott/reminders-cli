@@ -23,6 +23,8 @@ swift build              # build debug (needed before running tests)
 - `Tests/RemindersLibTests/main.swift` — custom test runner (no Xcode/XCTest required)
 - `reminders` — bash wrapper script, symlinked into `~/bin`
 
+See [DEVELOPMENT.md](DEVELOPMENT.md) for coding conventions, interface design rules, and patterns to follow when adding features.
+
 ## Key decisions
 
 - **EventKit over AppleScript** — AppleScript blocks the Reminders UI and is ~20x slower
