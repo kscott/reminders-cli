@@ -171,6 +171,68 @@ final class TestRunner: @unchecked Sendable {
             expect("fourth sunday — weekday",    fourthSun?.ordinalWeekday?.weekday    == 1) // Sun
         }
 
+        suite("parseOptions — date only") {
+            let o = parseOptions("friday at 3pm")
+            expect("date captured",      o.date       == "friday at 3pm")
+            expect("recurrence empty",   o.recurrence == "")
+            expect("priority empty",     o.priority   == "")
+            expect("note empty",         o.note       == "")
+            expect("url empty",          o.url        == "")
+        }
+
+        suite("parseOptions — repeat") {
+            let o = parseOptions("march 1 repeat monthly")
+            expect("date part",      o.date       == "march 1")
+            expect("recurrence",     o.recurrence == "monthly")
+        }
+
+        suite("parseOptions — priority") {
+            expect("high",   parseOptions("priority high").priority   == "high")
+            expect("medium", parseOptions("priority medium").priority == "medium")
+            expect("low",    parseOptions("priority low").priority    == "low")
+            expect("none",   parseOptions("priority none").priority   == "none")
+        }
+
+        suite("parseOptions — url") {
+            let o = parseOptions("url https://example.com")
+            expect("url captured", o.url == "https://example.com")
+            expect("date empty",   o.date == "")
+        }
+
+        suite("parseOptions — note captures to end of string") {
+            let o = parseOptions("tomorrow note pick up dry cleaning priority urgent")
+            expect("date part",                  o.date == "tomorrow")
+            expect("note captures everything",   o.note == "pick up dry cleaning priority urgent")
+            expect("priority not parsed",        o.priority == "")
+        }
+
+        suite("parseOptions — multiple fields") {
+            let o = parseOptions("friday repeat weekly priority high url https://example.com note check the dashboard")
+            expect("date",       o.date       == "friday")
+            expect("recurrence", o.recurrence == "weekly")
+            expect("priority",   o.priority   == "high")
+            expect("url",        o.url        == "https://example.com")
+            expect("note",       o.note       == "check the dashboard")
+        }
+
+        suite("parseOptions — fields without date") {
+            let o = parseOptions("repeat daily priority low note take with food")
+            expect("date empty",   o.date       == "")
+            expect("recurrence",   o.recurrence == "daily")
+            expect("priority",     o.priority   == "low")
+            expect("note",         o.note       == "take with food")
+        }
+
+        suite("parseOptions — any keyword order") {
+            let o1 = parseOptions("priority high repeat weekly")
+            expect("priority before repeat — priority", o1.priority   == "high")
+            expect("priority before repeat — repeat",   o1.recurrence == "weekly")
+
+            let o2 = parseOptions("url https://example.com priority medium")
+            expect("url before priority — url",      o2.url      == "https://example.com")
+            expect("url before priority — priority", o2.priority == "medium")
+        }
+
         suite("Recurrence — splitOnRepeat") {
             // keyword variants
             let kw = ["repeat", "repeats", "repeating", "repeated"]

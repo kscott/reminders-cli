@@ -18,7 +18,7 @@ reminders delete <title> [list]                   # Delete a reminder
 
 ## Due dates and repeats
 
-The title must always be quoted (it's the first argument). Everything after that — list name, date, and repeat — can be typed naturally with or without quotes.
+The title must always be quoted (it's the first argument). Everything after that — list name, date, and options — can be typed naturally with or without quotes.
 
 ```
 reminders create "Call dentist" tomorrow
@@ -30,16 +30,35 @@ reminders create "Follow up" "2026-04-10"
 
 If no time is given, defaults to 9:00 AM. If a date has already passed this year, it rolls to next year.
 
+## Optional fields
+
+After the title (and optional list name and date), you can add any of these keywords in any order:
+
+| Keyword | Values | Example |
+|---------|--------|---------|
+| `repeat` | see below | `repeat weekly` |
+| `priority` | `high`, `medium`, `low`, `none` | `priority high` |
+| `url` | any URL | `url https://example.com` |
+| `note` | free text to end of line | `note call before 5pm` |
+
+**`note` must always come last** — everything after it is treated as note text, including words that would otherwise be recognised as keywords. This means you can write freely without worrying about escaping.
+
+```
+reminders create "Pay rent" march 1 priority high note pay via bank transfer
+reminders create "Call dentist" friday priority medium url https://dentist.com note ask about cleaning cost
+reminders create "Take vitamins" repeat daily priority low note take with breakfast
+reminders create "Review contract" tomorrow url https://docs.example.com priority high note sign by EOD, check clause 4
+```
+
+Fields without a date:
+```
+reminders create "Buy milk" priority low
+reminders create "Read article" url https://example.com note save for weekend
+```
+
 ### Repeating reminders
 
-Include the word `repeat` (also `repeats`, `repeating`, or `repeated`) anywhere in the date — it acts as a separator between the date and the recurrence. Both of these are equivalent:
-
-```
-reminders create "Take vitamins" repeat daily
-reminders create "Take vitamins" "repeat daily"
-```
-
-The repeat word can come before or after the date:
+Use the word `repeat` (also `repeats`, `repeating`, or `repeated`) — it can appear before or after the date:
 
 ```
 reminders create "Team standup" Work monday 9am repeat weekly
@@ -122,10 +141,16 @@ reminders edit "Pay rent" "Daily Life" repeat monthly
 reminders edit "Book club" "Daily Life" repeat "last tuesday"
 ```
 
-**Set both at once:**
+**Add priority, note, or URL:**
 ```bash
-reminders edit "Buy groceries" "Daily Life" friday repeat weekly
-reminders edit "Pay rent" "Daily Life" "march 1 repeat monthly"
+reminders edit "Pay rent" "Daily Life" priority high
+reminders edit "Call dentist" url https://dentist.com note ask about X-rays
+reminders edit "Buy groceries" friday repeat weekly priority medium note check the fridge first
+```
+
+**Set multiple fields at once:**
+```bash
+reminders edit "Pay rent" "Daily Life" march 1 repeat monthly priority high note pay via bank
 ```
 
 **Rename a reminder:**

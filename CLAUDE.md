@@ -47,16 +47,19 @@ reminders delete <title> [list]
 
 `edit` updates only fields that are specified. `--title` is the one flag in the tool — necessary to distinguish the new name from the existing title used to find the reminder.
 
-## Repeat
+## Optional fields
 
-The word `repeat` in the date portion acts as a delimiter — left side is parsed as a date, right side as a recurrence:
+After title and optional list/date, keywords `repeat`, `priority`, `url`, and `note` can appear in any order. `note` must be last — it captures everything after it to end of string.
 
 ```
-reminders create "Pay rent" "march 1 repeat monthly"
-reminders create "Book club" "repeat last tuesday"
+reminders create "Pay rent" march 1 repeat monthly priority high note pay via bank
+reminders edit "Call dentist" friday priority medium url https://dentist.com note ask about X-rays
 ```
 
-Formats: `daily`, `weekly`, `monthly`, `yearly`, `every 2 weeks`, `first monday`, `last tuesday`, etc.
+- `repeat`: `daily`, `weekly`, `monthly`, `yearly`, `every 2 weeks`, `last tuesday`, etc.
+- `priority`: `high`, `medium`, `low`, `none`
+- `url`: any URL string
+- `note`: free text to end of string (must be last)
 
 ## Known limitations
 

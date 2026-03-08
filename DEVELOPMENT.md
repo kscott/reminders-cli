@@ -41,7 +41,7 @@ The one exception is `--title` in the `edit` command. It's necessary because the
 
 - **Title** is always `args[1]` — required, user should quote it
 - **List detection** — check if the first remaining arg matches a known list name via `store.calendars(for: .reminder)`; if so, it's the list and the rest is date/repeat
-- **Date/repeat split** — join remaining args into a single string, split on `\brepeat(?:s|ing|ed)?\b`; left side → `parseDate`, right side → `parseRecurrence`
+- **Options parsing** — join remaining args into a single string, pass to `parseOptions()`; returns `ParsedOptions` with `date`, `recurrence`, `priority`, `note`, `url` fields. `note` is extracted first (captures to end of string); remaining keywords (`repeat`, `priority`, `url`) can appear in any order
 - **Unquoted args** — the shell splits on spaces; we rejoin with spaces, so quoting is the user's choice and both forms should work identically
 
 ## Natural language over syntax
@@ -51,6 +51,7 @@ Prefer recognising natural words over inventing syntax.
 - `repeat`/`repeats`/`repeating`/`repeated` — all work as delimiters; accept conjugations people naturally type
 - `first monday`, `last tuesday` — ordinal weekday phrases, not `monday#1` or `monday:-1`
 - `every 2 weeks` — plain English intervals, not `2w` or `biweekly`
+- `note` captures to end of string — no escaping needed; free text just works
 
 When adding new features, ask: what would someone naturally type? Accept that.
 

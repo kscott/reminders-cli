@@ -32,12 +32,23 @@ func usage() -> Never {
     Date examples:
       tomorrow, friday, "march 15", "2026-03-10", 3pm, "tomorrow 3pm", "friday at 5pm"
 
-    Repeat — use the word "repeat" in the date portion:
-      reminders create "Take vitamins" repeat daily
-      reminders create "Team standup" Work monday 9am repeat weekly
-      reminders edit "Pay rent" "Daily Life" repeat monthly
+    Optional fields (any order, note must be last):
+      repeat daily / repeat weekly / repeat "last tuesday" / repeat "every 2 weeks"
+      priority high / priority medium / priority low / priority none
+      url https://example.com
+      note your free text goes here to end of line
     """)
     exit(0)
+}
+
+func parsePriority(_ s: String) -> Int? {
+    switch s.lowercased().trimmingCharacters(in: .whitespaces) {
+    case "high":          return 1
+    case "medium", "med": return 5
+    case "low":           return 9
+    case "none":          return 0
+    default:              return nil
+    }
 }
 
 func toEKRule(_ spec: RecurrenceSpec) -> EKRecurrenceRule {
@@ -110,6 +121,7 @@ store.requestFullAccessToReminders { granted, _ in
         var dueDate: Date? = nil
         var recurrenceSpec: RecurrenceSpec? = nil
 
+        var opts = ParsedOptions()
         if args.count > 2 {
             let remaining = Array(args.dropFirst(2))
             let knownLists = store.calendars(for: .reminder).map { $0.title }
@@ -120,10 +132,10 @@ store.requestFullAccessToReminders { granted, _ in
             } else {
                 rawString = remaining.joined(separator: " ")
             }
-            let (datePart, repeatPart) = splitOnRepeat(rawString)
-            if !datePart.isEmpty  { dueDate        = parseDate(datePart) }
-            if !repeatPart.isEmpty { recurrenceSpec = parseRecurrence(repeatPart) }
+            opts = parseOptions(rawString)
         }
+        if !opts.date.isEmpty       { dueDate        = parseDate(opts.date) }
+        if !opts.recurrence.isEmpty { recurrenceSpec = parseRecurrence(opts.recurrence) }
 
         let defaultCal = store.defaultCalendarForNewReminders()
         guard let cal = listName.flatMap({ name in store.calendars(for: .reminder).first(where: { $0.title == name }) })
@@ -137,14 +149,19 @@ store.requestFullAccessToReminders { granted, _ in
             reminder.dueDateComponents = Calendar.current.dateComponents(
                 [.year, .month, .day, .hour, .minute], from: dueDate)
         }
-        if let spec = recurrenceSpec {
-            reminder.addRecurrenceRule(toEKRule(spec))
-        }
+        if let spec = recurrenceSpec          { reminder.addRecurrenceRule(toEKRule(spec)) }
+        if let p = parsePriority(opts.priority) { reminder.priority = p }
+        if !opts.note.isEmpty                 { reminder.notes = opts.note }
+        if let u = URL(string: opts.url), !opts.url.isEmpty { reminder.url = u }
         do {
             try store.save(reminder, commit: true)
-            let dateStr   = dueDate.map { " due \(formatDate($0))" } ?? ""
-            let repeatStr = recurrenceSpec.map { " " + describeRecurrence($0) } ?? ""
-            print("Created: \(title) (in \(cal.title))\(dateStr)\(repeatStr)")
+            var parts = ["Created: \(title) (in \(cal.title))"]
+            if let d = dueDate              { parts.append("due \(formatDate(d))") }
+            if let s = recurrenceSpec       { parts.append(describeRecurrence(s)) }
+            if !opts.priority.isEmpty       { parts.append("priority \(opts.priority)") }
+            if !opts.note.isEmpty           { parts.append("+ note") }
+            if !opts.url.isEmpty            { parts.append("url \(opts.url)") }
+            print(parts.joined(separator: " · "))
         } catch {
             fail("Could not save reminder: \(error.localizedDescription)")
         }
@@ -202,16 +219,28 @@ store.requestFullAccessToReminders { granted, _ in
             }
 
             if let str = newDateRepeat {
-                let (datePart, repeatPart) = splitOnRepeat(str)
-                if !datePart.isEmpty, let date = parseDate(datePart) {
+                let opts = parseOptions(str)
+                if !opts.date.isEmpty, let date = parseDate(opts.date) {
                     reminder.dueDateComponents = Calendar.current.dateComponents(
                         [.year, .month, .day, .hour, .minute], from: date)
                     changes.append("due → \(formatDate(date))")
                 }
-                if !repeatPart.isEmpty, let spec = parseRecurrence(repeatPart) {
+                if !opts.recurrence.isEmpty, let spec = parseRecurrence(opts.recurrence) {
                     reminder.recurrenceRules?.forEach { reminder.removeRecurrenceRule($0) }
                     reminder.addRecurrenceRule(toEKRule(spec))
                     changes.append(describeRecurrence(spec))
+                }
+                if !opts.priority.isEmpty, let p = parsePriority(opts.priority) {
+                    reminder.priority = p
+                    changes.append("priority → \(opts.priority)")
+                }
+                if !opts.note.isEmpty {
+                    reminder.notes = opts.note
+                    changes.append("+ note")
+                }
+                if !opts.url.isEmpty, let u = URL(string: opts.url) {
+                    reminder.url = u
+                    changes.append("url → \(opts.url)")
                 }
             }
 
