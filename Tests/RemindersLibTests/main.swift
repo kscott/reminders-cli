@@ -66,11 +66,13 @@ final class TestRunner: @unchecked Sendable {
 
         suite("Weekdays") {
             let weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-            let oneWeekFromNow = cal.date(byAdding: .day, value: 7, to: Date())!
             for day in weekdays {
                 let pd = parseDate(day)!
                 expect("\(day) is in the future", pd.date > Date())
-                expect("\(day) is within 7 days", pd.date <= oneWeekFromNow)
+                // Compare calendar days to avoid time-of-day flakiness (parsed time defaults to 9am)
+                let dayDiff = cal.dateComponents([.day], from: cal.startOfDay(for: Date()),
+                                                            to: cal.startOfDay(for: pd.date)).day!
+                expect("\(day) is within 7 days", dayDiff <= 7)
             }
         }
 
