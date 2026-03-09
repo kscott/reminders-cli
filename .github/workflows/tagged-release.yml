@@ -1,0 +1,38 @@
+name: Tagged Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build release binary
+        run: swift build -c release --product reminders-bin
+
+      - name: Rename binary
+        run: cp .build/release/reminders-bin reminders-bin
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          body: |
+            ## Install
+
+            1. Download `reminders-bin` below
+            2. Move it to `~/bin/reminders-bin` (create `~/bin` if needed)
+            3. Make it executable: `chmod +x ~/bin/reminders-bin`
+            4. On first run, macOS will prompt for Reminders access
+
+            See the [README](https://github.com/kscott/reminders-cli#readme) for full setup instructions.
+          files: reminders-bin
+          make_latest: true
