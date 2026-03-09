@@ -200,6 +200,53 @@ reminders edit "Buy groceries" "Daily Life" friday --title "Weekly shopping"
 
 The list name is optional — if you leave it out, it searches all lists. Include it to be precise or if the same title appears in multiple lists.
 
+## Using with Claude
+
+Claude can manage your reminders conversationally — just describe what you want and it will translate that into the right command.
+
+### Creating reminders
+
+Tell Claude naturally:
+
+> "Remind me to call the dentist on Friday"
+> "Add a reminder to pay rent on the 1st of every month, high priority"
+> "I need to follow up with Sarah next Tuesday at 2pm — put it in Work"
+> "Remind me to take vitamins every morning"
+> "Set a reminder for the team meeting every Monday at 9am in Work, repeat weekly"
+
+Claude will pick the right list, parse the date, and set repeat and priority as needed.
+
+### Editing reminders
+
+> "Move the dentist reminder to next week"
+> "Change the team meeting to Thursdays"
+> "Add a note to the rent reminder — pay via bank transfer"
+> "Make the grocery reminder high priority"
+> "Rename 'Buy milk' to 'Weekly groceries'"
+> "Remove the due date from the book club reminder"
+
+Claude will run `reminders list` first if it needs to find the exact title.
+
+### Completing and deleting
+
+> "Mark the dentist reminder done"
+> "I paid rent, check that off"
+> "Delete the 'Follow up with Sarah' reminder"
+
+### Listing and reviewing
+
+> "What reminders do I have this week?"
+> "Show me everything in my Work list by priority"
+> "What's due today?"
+> "Show me the details of the rent reminder"
+
+### Tips for best results
+
+- **List names** — mention the list if you have reminders with similar titles in multiple lists ("put it in Work", "add it to Daily Life")
+- **Repeat reminders** — just say "every week", "monthly", "every other Tuesday" — Claude knows the formats
+- **Time vs. date-only** — if you want an alarm, include a time ("Friday at 3pm"); if you just want a date with no notification, leave the time out
+- **Clearing fields** — say "remove the due date" or "clear the note" and Claude will use the `none` keyword
+
 ## Known limitations
 
 - **Sections** within a list are not exposed by the EventKit API — reminders appear flat
