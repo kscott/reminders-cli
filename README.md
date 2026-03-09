@@ -86,14 +86,31 @@ Day-of-month rules repeat on a fixed date each month — useful for things like 
 
 ## Setup
 
-Requires macOS 14+ with Swift installed (comes with Xcode command line tools).
+### Requirements
+
+- **macOS 14 (Sonoma) or later**
+- **Xcode Command Line Tools** — provides Swift and the build toolchain
+
+  ```bash
+  xcode-select --install
+  ```
+
+  Or download directly from [developer.apple.com/download/all](https://developer.apple.com/download/all/) (search "Command Line Tools").
+
+- **`~/bin` in your `$PATH`** — the installer puts the binary there. Add this to your shell config (`~/.zshrc` or `~/.zprofile`) if needed:
+
+  ```bash
+  export PATH="$HOME/bin:$PATH"
+  ```
+
+### Install
 
 ```bash
 git clone git@github.com:kscott/reminders-cli.git ~/dev/reminders-cli
 ~/dev/reminders-cli/reminders setup
 ```
 
-`setup` builds the Swift package, installs the binary to `~/bin/reminders-bin`, and symlinks `~/bin/reminders` to the wrapper script. Make sure `~/bin` is in your `$PATH`.
+`setup` builds the Swift package, installs the binary to `~/bin/reminders-bin`, and symlinks `~/bin/reminders` to the wrapper script.
 
 On first run, macOS will prompt you to grant Reminders access.
 
