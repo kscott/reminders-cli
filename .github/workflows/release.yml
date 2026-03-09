@@ -15,7 +15,7 @@ jobs:
         run: swift build -c release
 
       - name: Rename binary
-        run: cp .build/release/reminders reminders-bin
+        run: cp .build/release/reminders-bin reminders-bin
 
       - name: Update rolling release
         uses: softprops/action-gh-release@v2
