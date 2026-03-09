@@ -62,6 +62,18 @@ final class TestRunner: @unchecked Sendable {
             }
         }
 
+        suite("next/this prefix") {
+            let friday     = parseDate("friday")!.date
+            let nextFriday = parseDate("next friday")!.date
+            let thisFriday = parseDate("this friday")!.date
+            expect("next friday == friday", nextFriday == friday)
+            expect("this friday == friday", thisFriday == friday)
+
+            let monday     = parseDate("monday")!.date
+            let nextMonday = parseDate("next monday")!.date
+            expect("next monday == monday", nextMonday == monday)
+        }
+
         suite("Month + day") {
             let pd = parseDate("march 15")!
             expect("march 15 — correct month", ymd(pd.date).month == 3)

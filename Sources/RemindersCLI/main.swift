@@ -23,20 +23,23 @@ func usage() -> Never {
     Usage:
       reminders open                                    # Open the Reminders app
       reminders lists                                   # Show all reminder lists
-      reminders list [list-name]                        # List incomplete reminders
+      reminders list [list-name] [by due|priority|title|created]
       reminders create <title> [list] [date]            # Create a reminder
-      reminders edit <title> [list] [date] [--title T]  # Edit due date, repeat, or title
-      reminders complete <title> [list]                 # Mark a reminder complete
-      reminders delete <title> [list]                   # Delete a reminder
+      reminders edit <title> [list] [date] [--title T]  # Edit fields; use "none" to clear
+      reminders complete <title> [list]                 # Mark a reminder complete (case-insensitive)
+      reminders delete <title> [list]                   # Delete a reminder (case-insensitive)
 
     Date examples:
-      tomorrow, friday, "march 15", "2026-03-10", 3pm, "tomorrow 3pm", "friday at 5pm"
+      tomorrow, friday, "next friday", "march 15", "2026-03-10", 3pm, "friday at 5pm"
 
     Optional fields (any order, note must be last):
       repeat daily / repeat weekly / repeat "last tuesday" / repeat "every 2 weeks"
       priority high / priority medium / priority low / priority none
       url https://example.com
       note your free text goes here to end of line
+
+    Clear a field in edit:
+      due none / repeat none / note none / url none / priority none
     """)
     exit(0)
 }
@@ -88,29 +91,89 @@ store.requestFullAccessToReminders { granted, _ in
         semaphore.signal()
 
     case "list":
-        let filterList = args.count > 1 ? args[1] : nil
-        let calendars: [EKCalendar]
+        // Parse: list [list-name] [by <field>]
+        var listArgs = Array(args.dropFirst())
+        var sortBy = "due"
+        if let byIdx = listArgs.firstIndex(of: "by"), byIdx + 1 < listArgs.count {
+            sortBy = listArgs[byIdx + 1].lowercased()
+            listArgs.removeSubrange(byIdx...(byIdx + 1))
+        }
+        let filterList = listArgs.first
+
+        let listCalendars: [EKCalendar]
         if let filterList {
             guard let cal = store.calendars(for: .reminder).first(where: { $0.title == filterList }) else {
                 fail("List not found: \(filterList)")
             }
-            calendars = [cal]
+            listCalendars = [cal]
         } else {
-            calendars = store.calendars(for: .reminder)
+            listCalendars = store.calendars(for: .reminder)
         }
-        let predicate = store.predicateForIncompleteReminders(withDueDateStarting: nil, ending: nil, calendars: calendars)
+
+        let predicate = store.predicateForIncompleteReminders(withDueDateStarting: nil, ending: nil, calendars: listCalendars)
         store.fetchReminders(matching: predicate) { reminders in
-            let sorted = (reminders ?? []).sorted { $0.calendar.title < $1.calendar.title }
+            let cal = Calendar.current
+
+            func dueDate(of r: EKReminder) -> Date? {
+                r.dueDateComponents.flatMap { cal.date(from: $0) }
+            }
+            func byDue(_ a: EKReminder, _ b: EKReminder) -> Bool {
+                switch (dueDate(of: a), dueDate(of: b)) {
+                case (nil, nil):         return (a.title ?? "") < (b.title ?? "")
+                case (nil, _):           return false
+                case (_, nil):           return true
+                case (let da?, let db?): return da < db
+                }
+            }
+            let sortFn: (EKReminder, EKReminder) -> Bool
+            switch sortBy {
+            case "priority":
+                sortFn = { a, b in
+                    let pa = a.priority == 0 ? 10 : a.priority
+                    let pb = b.priority == 0 ? 10 : b.priority
+                    return pa != pb ? pa < pb : byDue(a, b)
+                }
+            case "title":
+                sortFn = { a, b in
+                    (a.title ?? "").localizedCaseInsensitiveCompare(b.title ?? "") == .orderedAscending
+                }
+            case "created":
+                sortFn = { a, b in
+                    (a.creationDate ?? .distantPast) < (b.creationDate ?? .distantPast)
+                }
+            default: // "due", "date"
+                sortFn = byDue
+            }
+
+            func metaFor(_ r: EKReminder) -> String {
+                var parts: [String] = []
+                if let comps = r.dueDateComponents, let date = cal.date(from: comps) {
+                    parts.append(formatDate(date, showTime: comps.hour != nil))
+                }
+                if r.hasRecurrenceRules { parts.append("repeating") }
+                switch r.priority {
+                case 1...4: parts.append("high")
+                case 5:     parts.append("medium")
+                case 6...9: parts.append("low")
+                default:    break
+                }
+                if r.notes != nil { parts.append("+ note") }
+                if r.url   != nil { parts.append("+ url") }
+                return parts.isEmpty ? "" : "  ·  " + parts.joined(separator: " · ")
+            }
+
             if filterList != nil {
-                for r in sorted { print(r.title ?? "") }
+                let sorted = (reminders ?? []).sorted(by: sortFn)
+                for r in sorted { print("  \(r.title ?? "")\(metaFor(r))") }
             } else {
-                var currentList = ""
-                for r in sorted {
-                    if r.calendar.title != currentList {
-                        currentList = r.calendar.title
-                        print("--- \(currentList) ---")
+                // Group by list, sort within each group
+                let grouped = Dictionary(grouping: reminders ?? [], by: { $0.calendar.title })
+                let listNames = grouped.keys.sorted()
+                for listName in listNames {
+                    print("--- \(listName) ---")
+                    for r in (grouped[listName] ?? []).sorted(by: sortFn) {
+                        print("  \(r.title ?? "")\(metaFor(r))")
                     }
-                    print("  \(r.title ?? "")")
                 }
             }
             semaphore.signal()
@@ -219,7 +282,9 @@ store.requestFullAccessToReminders { granted, _ in
 
         store.fetchReminders(matching: store.predicateForIncompleteReminders(
                 withDueDateStarting: nil, ending: nil, calendars: editCalendars)) { reminders in
-            guard let reminder = (reminders ?? []).first(where: { $0.title == title }) else {
+            guard let reminder = (reminders ?? []).first(where: {
+                ($0.title ?? "").caseInsensitiveCompare(title) == .orderedSame
+            }) else {
                 fail("Not found: \(title)\(listName.map { " in \($0)" } ?? "")")
             }
 
@@ -232,31 +297,51 @@ store.requestFullAccessToReminders { granted, _ in
 
             if let str = newDateRepeat {
                 let opts = parseOptions(str)
-                if !opts.date.isEmpty, let pd = parseDate(opts.date) {
-                    let comps: Set<Calendar.Component> = pd.hasTime
-                        ? [.year, .month, .day, .hour, .minute] : [.year, .month, .day]
-                    reminder.dueDateComponents = Calendar.current.dateComponents(comps, from: pd.date)
-                    changes.append("due → \(formatDate(pd.date, showTime: pd.hasTime))")
+                if !opts.date.isEmpty {
+                    if opts.date.lowercased() == "none" {
+                        reminder.dueDateComponents = nil
+                        changes.append("due cleared")
+                    } else if let pd = parseDate(opts.date) {
+                        let comps: Set<Calendar.Component> = pd.hasTime
+                            ? [.year, .month, .day, .hour, .minute] : [.year, .month, .day]
+                        reminder.dueDateComponents = Calendar.current.dateComponents(comps, from: pd.date)
+                        changes.append("due → \(formatDate(pd.date, showTime: pd.hasTime))")
+                    }
                 }
                 if !opts.recurrence.isEmpty {
-                    guard let spec = parseRecurrence(opts.recurrence) else {
-                        fail("Unrecognised repeat: \"\(opts.recurrence)\"")
+                    if opts.recurrence.lowercased() == "none" {
+                        reminder.recurrenceRules?.forEach { reminder.removeRecurrenceRule($0) }
+                        changes.append("repeat cleared")
+                    } else {
+                        guard let spec = parseRecurrence(opts.recurrence) else {
+                            fail("Unrecognised repeat: \"\(opts.recurrence)\"")
+                        }
+                        reminder.recurrenceRules?.forEach { reminder.removeRecurrenceRule($0) }
+                        reminder.addRecurrenceRule(toEKRule(spec))
+                        changes.append(describeRecurrence(spec))
                     }
-                    reminder.recurrenceRules?.forEach { reminder.removeRecurrenceRule($0) }
-                    reminder.addRecurrenceRule(toEKRule(spec))
-                    changes.append(describeRecurrence(spec))
                 }
                 if !opts.priority.isEmpty, let p = parsePriority(opts.priority) {
                     reminder.priority = p
-                    changes.append("priority → \(opts.priority)")
+                    changes.append(p == 0 ? "priority cleared" : "priority → \(opts.priority)")
                 }
                 if !opts.note.isEmpty {
-                    reminder.notes = opts.note
-                    changes.append("+ note")
+                    if opts.note.lowercased() == "none" {
+                        reminder.notes = nil
+                        changes.append("note cleared")
+                    } else {
+                        reminder.notes = opts.note
+                        changes.append("+ note")
+                    }
                 }
-                if !opts.url.isEmpty, let u = URL(string: opts.url) {
-                    reminder.url = u
-                    changes.append("url → \(opts.url)")
+                if !opts.url.isEmpty {
+                    if opts.url.lowercased() == "none" {
+                        reminder.url = nil
+                        changes.append("url cleared")
+                    } else if let u = URL(string: opts.url) {
+                        reminder.url = u
+                        changes.append("url → \(opts.url)")
+                    }
                 }
             }
 
@@ -286,7 +371,9 @@ store.requestFullAccessToReminders { granted, _ in
         }
         let predicate = store.predicateForIncompleteReminders(withDueDateStarting: nil, ending: nil, calendars: calendars)
         store.fetchReminders(matching: predicate) { reminders in
-            guard let reminder = (reminders ?? []).first(where: { $0.title == title }) else {
+            guard let reminder = (reminders ?? []).first(where: {
+                ($0.title ?? "").caseInsensitiveCompare(title) == .orderedSame
+            }) else {
                 fail("Not found: \(title)\(listName.map { " in \($0)" } ?? "")")
             }
             do {

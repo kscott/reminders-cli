@@ -7,13 +7,13 @@ Unlike AppleScript-based approaches, this tool talks to Reminders via the native
 ## Commands
 
 ```
-reminders open                                    # Open the Reminders app
-reminders lists                                   # Show all reminder lists
-reminders list [list-name]                        # List incomplete reminders
-reminders create <title> [list] [date]            # Create a reminder
-reminders edit <title> [list] [date] [--title T]  # Edit due date, repeat, or title
-reminders complete <title> [list]                 # Mark a reminder complete
-reminders delete <title> [list]                   # Delete a reminder
+reminders open                                                     # Open the Reminders app
+reminders lists                                                    # Show all reminder lists
+reminders list [list-name] [by due|priority|title|created]         # List incomplete reminders
+reminders create <title> [list] [date]                             # Create a reminder
+reminders edit <title> [list] [date] [--title T]                   # Edit fields
+reminders complete <title> [list]                                  # Mark complete (case-insensitive)
+reminders delete <title> [list]                                    # Delete (case-insensitive)
 ```
 
 ## Due dates and repeats
@@ -26,9 +26,10 @@ reminders create "Submit report" Reminders friday
 reminders create "Team meeting" Work "tuesday at 2pm"
 reminders create "Pay rent" "march 1"
 reminders create "Follow up" "2026-04-10"
+reminders create "Weekly review" "next friday"
 ```
 
-If no time is given, defaults to 9:00 AM. If a date has already passed this year, it rolls to next year.
+`next` and `this` are ignored before weekday names — `next friday` and `friday` mean the same thing. If no time is given, the reminder is date-only (no alarm time). If a date has already passed this year, it rolls to next year.
 
 ## Optional fields
 
@@ -122,6 +123,27 @@ reminders test
 
 Builds and runs the test suite against the date and recurrence parsing logic. No Xcode required.
 
+## Listing reminders
+
+`list` shows incomplete reminders with metadata — due date, repeat status, priority, and note/url indicators:
+
+```
+--- Daily Life ---
+  Pay rent          Mar 1, 2026  ·  repeating  ·  high
+  Buy groceries     Fri, Mar 6, 2026
+  Take vitamins     repeating  ·  low  ·  + note
+```
+
+Sort order (default is by due date, soonest first):
+```
+reminders list                           # all lists, by due date
+reminders list "Daily Life" by priority  # single list, high priority first
+reminders list by title                  # all lists, alphabetical
+reminders list Work by created           # oldest added first
+```
+
+Title matching in `complete`, `delete`, and `edit` is case-insensitive — "buy groceries" finds "Buy Groceries".
+
 ## Editing reminders
 
 `edit` finds a reminder by title and updates only the fields you specify — everything else is left as-is.
@@ -154,6 +176,15 @@ reminders edit "Buy groceries" friday repeat weekly priority medium note check t
 **Set multiple fields at once:**
 ```bash
 reminders edit "Pay rent" "Daily Life" march 1 repeat monthly priority high note pay via bank
+```
+
+**Clear a field with `none`:**
+```bash
+reminders edit "Pay rent" due none       # remove due date
+reminders edit "Pay rent" repeat none    # remove recurrence
+reminders edit "Pay rent" note none      # clear note
+reminders edit "Pay rent" url none       # clear URL
+reminders edit "Pay rent" priority none  # clear priority
 ```
 
 **Rename a reminder:**

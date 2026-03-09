@@ -87,7 +87,9 @@ public func parseDate(_ input: String) -> ParsedDate? {
         let tomorrow = cal.date(byAdding: .day, value: 1, to: now)!
         let tc = cal.dateComponents([.year, .month, .day], from: tomorrow)
         components.year = tc.year; components.month = tc.month; components.day = tc.day
-    } else if let weekdayNum = weekdays[dayTrimmed] {
+    } else if let weekdayNum = weekdays[dayTrimmed.replacingOccurrences(
+                  of: #"^(?:next|this)\s+"#, with: "", options: .regularExpression)] {
+        // "next friday", "this monday" etc. — strip the prefix, same behaviour as bare weekday
         var dc = DateComponents(); dc.weekday = weekdayNum
         if let next = cal.nextDate(after: now, matching: dc, matchingPolicy: .nextTime) {
             let nc = cal.dateComponents([.year, .month, .day], from: next)
