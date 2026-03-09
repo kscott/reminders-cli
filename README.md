@@ -10,6 +10,7 @@ Unlike AppleScript-based approaches, this tool talks to Reminders via the native
 reminders open                                                     # Open the Reminders app
 reminders lists                                                    # Show all reminder lists
 reminders list [list-name] [by due|priority|title|created]         # List incomplete reminders
+reminders show <title> [list]                                      # Show full detail of a reminder
 reminders create <title> [list] [date]                             # Create a reminder
 reminders edit <title> [list] [date] [--title T]                   # Edit fields
 reminders complete <title> [list]                                  # Mark complete (case-insensitive)

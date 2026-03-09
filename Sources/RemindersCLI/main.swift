@@ -26,6 +26,7 @@ func usage() -> Never {
       reminders list [list-name] [by due|priority|title|created]
       reminders create <title> [list] [date]            # Create a reminder
       reminders edit <title> [list] [date] [--title T]  # Edit fields; use "none" to clear
+      reminders show <title> [list]                     # Show full detail of a reminder
       reminders complete <title> [list]                 # Mark a reminder complete (case-insensitive)
       reminders delete <title> [list]                   # Delete a reminder (case-insensitive)
 
@@ -353,6 +354,54 @@ store.requestFullAccessToReminders { granted, _ in
             } catch {
                 fail("Could not save: \(error.localizedDescription)")
             }
+            semaphore.signal()
+        }
+
+    case "show":
+        guard args.count > 1 else { fail("provide a reminder title") }
+        let title = args[1]
+        let listName = args.count > 2 ? args[2] : nil
+        let showCalendars: [EKCalendar]
+        if let listName {
+            guard let cal = store.calendars(for: .reminder).first(where: { $0.title == listName }) else {
+                fail("List not found: \(listName)")
+            }
+            showCalendars = [cal]
+        } else {
+            showCalendars = store.calendars(for: .reminder)
+        }
+        store.fetchReminders(matching: store.predicateForIncompleteReminders(
+                withDueDateStarting: nil, ending: nil, calendars: showCalendars)) { reminders in
+            guard let reminder = (reminders ?? []).first(where: {
+                ($0.title ?? "").caseInsensitiveCompare(title) == .orderedSame
+            }) else {
+                fail("Not found: \(title)\(listName.map { " in \($0)" } ?? "")")
+            }
+            let cal = Calendar.current
+            print("Title:    \(reminder.title ?? "")")
+            print("List:     \(reminder.calendar.title)")
+            if let comps = reminder.dueDateComponents, let date = cal.date(from: comps) {
+                print("Due:      \(formatDate(date, showTime: comps.hour != nil))")
+            }
+            if reminder.hasRecurrenceRules, let rule = reminder.recurrenceRules?.first {
+                let freq: String
+                switch rule.frequency {
+                case .daily:   freq = "daily"
+                case .weekly:  freq = rule.interval > 1 ? "every \(rule.interval) weeks" : "weekly"
+                case .monthly: freq = rule.interval > 1 ? "every \(rule.interval) months" : "monthly"
+                case .yearly:  freq = "yearly"
+                @unknown default: freq = "repeating"
+                }
+                print("Repeat:   \(freq)")
+            }
+            switch reminder.priority {
+            case 1...4: print("Priority: high")
+            case 5:     print("Priority: medium")
+            case 6...9: print("Priority: low")
+            default:    break
+            }
+            if let notes = reminder.notes, !notes.isEmpty { print("Note:     \(notes)") }
+            if let url = reminder.url                      { print("URL:      \(url)") }
             semaphore.signal()
         }
 
