@@ -29,32 +29,34 @@ Claude translates your words into the right commands, picks the correct list, pa
 ### Requirements
 
 - **macOS 14 (Sonoma) or later**
-- **Xcode Command Line Tools** — provides Swift and the build toolchain. Install by running this in Terminal:
-
-  ```bash
-  xcode-select --install
-  ```
-
-  Or download directly from [developer.apple.com/download/all](https://developer.apple.com/download/all/) (search "Command Line Tools").
-
-- **`~/bin` in your `$PATH`** — the installer puts the binary there. If `reminders` isn't found after install, add this line to your `~/.zshrc`:
+- **Apple Silicon Mac** (arm64) for the pre-built binary; Intel Macs must build from source
+- **`~/bin` in your `$PATH`** — the installer puts the binary there. If `reminders` isn't found after install, add this to your `~/.zshrc` and open a new Terminal window:
 
   ```bash
   export PATH="$HOME/bin:$PATH"
   ```
 
-  Then open a new Terminal window.
+### Install (pre-built binary — no Xcode required)
 
-### Install
+1. Download `reminders-cli-v1.0.0-arm64.tar.gz` from the [latest release](https://github.com/kscott/reminders-cli/releases/latest)
+2. In Terminal:
 
 ```bash
+cd ~/Downloads
+tar -xzf reminders-cli-v1.0.0-arm64.tar.gz
+cd reminders-cli-v1.0.0
+./install.sh
+```
+
+On first run, macOS will prompt you to grant Reminders access.
+
+### Build from source (requires Xcode Command Line Tools)
+
+```bash
+xcode-select --install   # if not already installed
 git clone https://github.com/kscott/reminders-cli.git ~/dev/reminders-cli
 ~/dev/reminders-cli/reminders setup
 ```
-
-`setup` builds the tool and installs it to `~/bin/reminders`. The `~/dev/reminders-cli` location is just a suggestion — clone it wherever you like.
-
-On first run, macOS will prompt you to grant Reminders access.
 
 ## Command reference
 
