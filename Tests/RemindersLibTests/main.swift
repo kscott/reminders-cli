@@ -46,6 +46,18 @@ final class TestRunner: @unchecked Sendable {
             expect("time included — hasTime true", parseDate("friday at 5pm")?.hasTime == true)
         }
 
+        suite("hasDate flag") {
+            expect("time only — hasDate false",       parseDate("3pm")?.hasDate          == false)
+            expect("time only — hasDate false",       parseDate("8:30pm")?.hasDate       == false)
+            expect("time only — hasDate false",       parseDate("14:30")?.hasDate        == false)
+            expect("tomorrow — hasDate true",         parseDate("tomorrow")?.hasDate     == true)
+            expect("weekday — hasDate true",          parseDate("friday")?.hasDate       == true)
+            expect("month+day — hasDate true",        parseDate("march 15")?.hasDate     == true)
+            expect("ISO date — hasDate true",         parseDate("2026-03-15")?.hasDate   == true)
+            expect("date+time — hasDate true",        parseDate("friday at 5pm")?.hasDate == true)
+            expect("tomorrow+time — hasDate true",    parseDate("tomorrow 3pm")?.hasDate == true)
+        }
+
         suite("Relative days") {
             expect("today matches current date", ymd(parseDate("today")!.date) == ymd(Date()))
             let tomorrow = ymd(cal.date(byAdding: .day, value: 1, to: Date())!)

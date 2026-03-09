@@ -22,10 +22,14 @@ public struct ParsedDate {
     public let date: Date
     /// True when the input explicitly included a time ("3pm", "at 14:30", etc.)
     public let hasTime: Bool
+    /// True when the input included an explicit date (day, weekday, month+day, ISO).
+    /// False when the input was time-only ("3pm"), in which case date defaults to today.
+    public let hasDate: Bool
 
-    public init(date: Date, hasTime: Bool) {
+    public init(date: Date, hasTime: Bool, hasDate: Bool) {
         self.date    = date
         self.hasTime = hasTime
+        self.hasDate = hasDate
     }
 }
 
@@ -122,7 +126,7 @@ public func parseDate(_ input: String) -> ParsedDate? {
     }
 
     guard let date = cal.date(from: components) else { return nil }
-    return ParsedDate(date: date, hasTime: timePart != nil)
+    return ParsedDate(date: date, hasTime: timePart != nil, hasDate: !dayTrimmed.isEmpty)
 }
 
 public func formatDate(_ date: Date, showTime: Bool) -> String {

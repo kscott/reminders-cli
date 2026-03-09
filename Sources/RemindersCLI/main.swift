@@ -303,10 +303,20 @@ store.requestFullAccessToReminders { granted, _ in
                         reminder.dueDateComponents = nil
                         changes.append("due cleared")
                     } else if let pd = parseDate(opts.date) {
-                        let comps: Set<Calendar.Component> = pd.hasTime
-                            ? [.year, .month, .day, .hour, .minute] : [.year, .month, .day]
-                        reminder.dueDateComponents = Calendar.current.dateComponents(comps, from: pd.date)
-                        changes.append("due → \(formatDate(pd.date, showTime: pd.hasTime))")
+                        if pd.hasTime && !pd.hasDate, let existing = reminder.dueDateComponents {
+                            // Time-only input (e.g. "3pm") — preserve existing date, update time only
+                            var comps = existing
+                            let t = Calendar.current.dateComponents([.hour, .minute], from: pd.date)
+                            comps.hour = t.hour; comps.minute = t.minute
+                            reminder.dueDateComponents = comps
+                            let display = Calendar.current.date(from: comps) ?? pd.date
+                            changes.append("due → \(formatDate(display, showTime: true))")
+                        } else {
+                            let comps: Set<Calendar.Component> = pd.hasTime
+                                ? [.year, .month, .day, .hour, .minute] : [.year, .month, .day]
+                            reminder.dueDateComponents = Calendar.current.dateComponents(comps, from: pd.date)
+                            changes.append("due → \(formatDate(pd.date, showTime: pd.hasTime))")
+                        }
                     }
                 }
                 if !opts.recurrence.isEmpty {
