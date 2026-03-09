@@ -9,6 +9,8 @@ import AppKit
 import EventKit
 import RemindersLib
 
+let version = "1.0.0"
+
 let store = EKEventStore()
 let semaphore = DispatchSemaphore(value: 0)
 let args = Array(CommandLine.arguments.dropFirst())
@@ -20,6 +22,8 @@ func fail(_ msg: String) -> Never {
 
 func usage() -> Never {
     print("""
+    reminders \(version) — CLI for Apple Reminders
+
     Usage:
       reminders open                                    # Open the Reminders app
       reminders lists                                   # Show all reminder lists
@@ -76,6 +80,7 @@ func toEKRule(_ spec: RecurrenceSpec) -> EKRecurrenceRule {
 }
 
 guard let cmd = args.first else { usage() }
+if cmd == "--version" || cmd == "-v" { print(version); exit(0) }
 
 store.requestFullAccessToReminders { granted, _ in
     guard granted else { fail("Reminders access denied") }

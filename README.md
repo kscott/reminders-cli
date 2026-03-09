@@ -61,6 +61,8 @@ On first run, macOS will prompt you to grant Reminders access.
 For direct use or scripting — Claude handles all of this automatically when you ask conversationally.
 
 ```
+reminders                                                          # Show help
+reminders --version                                                # Show version
 reminders open                                                     # Open the Reminders app
 reminders lists                                                    # Show all reminder lists
 reminders list [list-name] [by due|priority|title|created]         # List incomplete reminders
