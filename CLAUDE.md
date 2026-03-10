@@ -40,11 +40,11 @@ reminders open
 reminders lists
 reminders list [name]
 reminders find <query>
-reminders add <title> [list] [date]
-reminders change <title> [list] [date]
-reminders rename <title> <new-title> [list]
-reminders done <title> [list]
-reminders remove <title> [list]
+reminders add <name> [list] [date]
+reminders change <name> [list] [date]
+reminders rename <name> <new-name> [list]
+reminders done <name> [list]
+reminders remove <name> [list]
 ```
 
 `change` updates only fields that are specified — everything else is left as-is.
@@ -69,7 +69,7 @@ reminders change "Call dentist" friday priority medium url https://dentist.com n
 - Sections within a list are not exposed by EventKit — all reminders appear flat
 - Sub-tasks have no parent-child relationship in the public EventKit API
 - Sharing state (who a list is shared with) is not accessible via EventKit
-- `complete` and `remove` only search incomplete reminders, matched by title (first match wins)
+- `done` and `remove` only match incomplete reminders (first match wins)
 
 ## Deployment
 
