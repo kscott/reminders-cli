@@ -305,11 +305,17 @@ store.requestFullAccessToReminders { granted, _ in
 
         store.fetchReminders(matching: store.predicateForIncompleteReminders(
                 withDueDateStarting: nil, ending: nil, calendars: editCalendars)) { reminders in
-            guard let reminder = (reminders ?? []).first(where: {
+            let matches = (reminders ?? []).filter {
                 ($0.title ?? "").caseInsensitiveCompare(title) == .orderedSame
-            }) else {
-                fail("Not found: \(title)\(listName.map { " in \($0)" } ?? "")")
             }
+            guard !matches.isEmpty else { fail("Not found: \(title)\(listName.map { " in \($0)" } ?? "")") }
+            if matches.count > 1 {
+                print("Multiple reminders named '\(title)':")
+                for r in matches { print("  [\(r.calendar.title)]") }
+                print("Add the list name to narrow: reminders change \"\(title)\" \(matches[0].calendar.title) ...")
+                exit(1)
+            }
+            let reminder = matches[0]
 
             var changes: [String] = []
 
@@ -399,11 +405,17 @@ store.requestFullAccessToReminders { granted, _ in
         }
         store.fetchReminders(matching: store.predicateForIncompleteReminders(
                 withDueDateStarting: nil, ending: nil, calendars: showCalendars)) { reminders in
-            guard let reminder = (reminders ?? []).first(where: {
+            let matches = (reminders ?? []).filter {
                 ($0.title ?? "").caseInsensitiveCompare(title) == .orderedSame
-            }) else {
-                fail("Not found: \(title)\(listName.map { " in \($0)" } ?? "")")
             }
+            guard !matches.isEmpty else { fail("Not found: \(title)\(listName.map { " in \($0)" } ?? "")") }
+            if matches.count > 1 {
+                print("Multiple reminders named '\(title)':")
+                for r in matches { print("  [\(r.calendar.title)]") }
+                print("Add the list name to narrow: reminders show \"\(title)\" \(matches[0].calendar.title)")
+                exit(1)
+            }
+            let reminder = matches[0]
             let cal = Calendar.current
             print("Title:    \(reminder.title ?? "")")
             print("List:     \(reminder.calendar.title)")
@@ -448,11 +460,17 @@ store.requestFullAccessToReminders { granted, _ in
         }
         store.fetchReminders(matching: store.predicateForIncompleteReminders(
                 withDueDateStarting: nil, ending: nil, calendars: renameCalendars)) { reminders in
-            guard let reminder = (reminders ?? []).first(where: {
+            let matches = (reminders ?? []).filter {
                 ($0.title ?? "").caseInsensitiveCompare(oldTitle) == .orderedSame
-            }) else {
-                fail("Not found: \(oldTitle)\(listName.map { " in \($0)" } ?? "")")
             }
+            guard !matches.isEmpty else { fail("Not found: \(oldTitle)\(listName.map { " in \($0)" } ?? "")") }
+            if matches.count > 1 {
+                print("Multiple reminders named '\(oldTitle)':")
+                for r in matches { print("  [\(r.calendar.title)]") }
+                print("Add the list name to narrow: reminders rename \"\(oldTitle)\" \"\(newTitle)\" \(matches[0].calendar.title)")
+                exit(1)
+            }
+            let reminder = matches[0]
             reminder.title = newTitle
             do {
                 try store.save(reminder, commit: true)
@@ -514,11 +532,17 @@ store.requestFullAccessToReminders { granted, _ in
         }
         let predicate = store.predicateForIncompleteReminders(withDueDateStarting: nil, ending: nil, calendars: calendars)
         store.fetchReminders(matching: predicate) { reminders in
-            guard let reminder = (reminders ?? []).first(where: {
+            let matches = (reminders ?? []).filter {
                 ($0.title ?? "").caseInsensitiveCompare(title) == .orderedSame
-            }) else {
-                fail("Not found: \(title)\(listName.map { " in \($0)" } ?? "")")
             }
+            guard !matches.isEmpty else { fail("Not found: \(title)\(listName.map { " in \($0)" } ?? "")") }
+            if matches.count > 1 {
+                print("Multiple reminders named '\(title)':")
+                for r in matches { print("  [\(r.calendar.title)]") }
+                print("Add the list name to narrow: reminders \(cmd) \"\(title)\" \(matches[0].calendar.title)")
+                exit(1)
+            }
+            let reminder = matches[0]
             do {
                 if cmd == "done" {
                     reminder.isCompleted = true
