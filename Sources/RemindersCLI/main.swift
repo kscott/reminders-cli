@@ -50,7 +50,7 @@ func usage() -> Never {
       reminders add <name> [list] [date]              # Add a reminder
       reminders change <name> [list] [field value]   # Change fields; use "none" to clear
       reminders rename <name> <new-name> [list]      # Rename a reminder
-      reminders search <query>                         # Search titles and notes
+      reminders find <query>                          # Search titles and notes
       reminders show <name> [list]                   # Show full detail of a reminder
       reminders done <name> [list]                   # Mark a reminder done
       reminders remove <name> [list]                 # Remove a reminder
@@ -66,6 +66,8 @@ func usage() -> Never {
 
     Clear a field with change:
       due none / repeat none / note none / url none / priority none
+
+    Feedback: https://github.com/kscott/get-clear/issues
     """)
     exit(0)
 }
