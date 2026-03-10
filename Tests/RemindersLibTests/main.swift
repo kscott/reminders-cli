@@ -96,6 +96,26 @@ final class TestRunner: @unchecked Sendable {
             expect("january 1 rolls to future if past", jan1.date >= Date())
         }
 
+        suite("Month + day + year") {
+            let a = parseDate("march 10 2027")!
+            expect("march 10 2027 — year",  ymd(a.date).year  == 2027)
+            expect("march 10 2027 — month", ymd(a.date).month == 3)
+            expect("march 10 2027 — day",   ymd(a.date).day   == 10)
+
+            let b = parseDate("march 10, 2027")!
+            expect("march 10, 2027 — year",  ymd(b.date).year  == 2027)
+            expect("march 10, 2027 — month", ymd(b.date).month == 3)
+            expect("march 10, 2027 — day",   ymd(b.date).day   == 10)
+
+            let c = parseDate("10 march 2027")!
+            expect("10 march 2027 — year",  ymd(c.date).year  == 2027)
+            expect("10 march 2027 — month", ymd(c.date).month == 3)
+            expect("10 march 2027 — day",   ymd(c.date).day   == 10)
+
+            let d = parseDate("january 1 28")!
+            expect("january 1 28 — 2-digit year expands to 2028", ymd(d.date).year == 2028)
+        }
+
         suite("Numeric dates") {
             let iso = parseDate("2026-03-15")!
             expect("ISO year",  ymd(iso.date).year  == 2026)
@@ -111,6 +131,16 @@ final class TestRunner: @unchecked Sendable {
             expect("3-15 day",   ymd(dash.date).day   == 15)
 
             expect("1/1 rolls to future if past", parseDate("1/1")!.date >= Date())
+
+            let usLong = parseDate("3/10/2027")!
+            expect("3/10/2027 — US M/D/Y — year",  ymd(usLong.date).year  == 2027)
+            expect("3/10/2027 — US M/D/Y — month", ymd(usLong.date).month == 3)
+            expect("3/10/2027 — US M/D/Y — day",   ymd(usLong.date).day   == 10)
+
+            let usShort = parseDate("3/10/27")!
+            expect("3/10/27 — 2-digit year — year",  ymd(usShort.date).year  == 2027)
+            expect("3/10/27 — 2-digit year — month", ymd(usShort.date).month == 3)
+            expect("3/10/27 — 2-digit year — day",   ymd(usShort.date).day   == 10)
         }
 
         suite("Time parsing") {

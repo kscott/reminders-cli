@@ -102,14 +102,32 @@ public func parseDate(_ input: String) -> ParsedDate? {
     } else {
         let parts = dayTrimmed.split(separator: " ").map(String.init)
         if parts.count == 2, let monthNum = months[parts[0]], let day = Int(parts[1]) {
+            // "march 15" — roll to next year if past
             components.month = monthNum; components.day = day
             if let d = cal.date(from: components), d < now {
                 components.year = (components.year ?? 0) + 1
             }
+        } else if parts.count == 3 {
+            // "march 10 2027", "march 10, 2027", "10 march 2027"
+            let p0 = parts[0].trimmingCharacters(in: CharacterSet(charactersIn: ","))
+            let p1 = parts[1].trimmingCharacters(in: CharacterSet(charactersIn: ","))
+            if let monthNum = months[p0], let day = Int(p1), let year = Int(parts[2]) {
+                components.month = monthNum; components.day = day
+                components.year = year < 100 ? 2000 + year : year
+            } else if let day = Int(p0), let monthNum = months[p1], let year = Int(parts[2]) {
+                components.month = monthNum; components.day = day
+                components.year = year < 100 ? 2000 + year : year
+            } else {
+                return nil
+            }
         } else if parts.count == 1 {
             let numParts = parts[0].components(separatedBy: CharacterSet(charactersIn: "/-"))
             if numParts.count == 3,
-               let y = Int(numParts[0]), let m = Int(numParts[1]), let d = Int(numParts[2]) {
+               let p0 = Int(numParts[0]), let p1 = Int(numParts[1]), let p2 = Int(numParts[2]) {
+                // Heuristic: first part > 31 → Y/M/D (ISO); otherwise → M/D/Y (US)
+                let y, m, d: Int
+                if p0 > 31 { (y, m, d) = (p0, p1, p2) }
+                else { let yr = p2 < 100 ? 2000 + p2 : p2; (y, m, d) = (yr, p0, p1) }
                 components.year = y; components.month = m; components.day = d
             } else if numParts.count == 2,
                       let m = Int(numParts[0]), let d = Int(numParts[1]) {
