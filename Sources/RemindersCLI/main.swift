@@ -20,6 +20,25 @@ func fail(_ msg: String) -> Never {
     exit(1)
 }
 
+func calendarDot(_ calendar: EKCalendar) -> String {
+    guard ProcessInfo.processInfo.environment["NO_COLOR"] == nil else { return "  " }
+    guard let cg = calendar.cgColor else { return "  " }
+    let colorSpace = cg.colorSpace?.model
+    let components = cg.components ?? []
+    let r, g, b: Int
+    if colorSpace == .rgb, components.count >= 3 {
+        r = Int(components[0] * 255)
+        g = Int(components[1] * 255)
+        b = Int(components[2] * 255)
+    } else if colorSpace == .monochrome, components.count >= 1 {
+        let w = Int(components[0] * 255)
+        r = w; g = w; b = w
+    } else {
+        return "  "
+    }
+    return "\u{001B}[38;2;\(r);\(g);\(b)m●\u{001B}[0m "
+}
+
 func usage() -> Never {
     print("""
     reminders \(version) — CLI for Apple Reminders
@@ -170,15 +189,17 @@ store.requestFullAccessToReminders { granted, _ in
 
             if filterList != nil {
                 let sorted = (reminders ?? []).sorted(by: sortFn)
-                for r in sorted { print("  \(r.title ?? "")\(metaFor(r))") }
+                for r in sorted { print("\(calendarDot(r.calendar))\(r.title ?? "")\(metaFor(r))") }
             } else {
                 // Group by list, sort within each group
                 let grouped = Dictionary(grouping: reminders ?? [], by: { $0.calendar.title })
                 let listNames = grouped.keys.sorted()
                 for listName in listNames {
-                    print("--- \(listName) ---")
+                    let listCal = store.calendars(for: .reminder).first { $0.title == listName }
+                    let dot = listCal.map { calendarDot($0) } ?? "  "
+                    print("\(dot)--- \(listName) ---")
                     for r in (grouped[listName] ?? []).sorted(by: sortFn) {
-                        print("  \(r.title ?? "")\(metaFor(r))")
+                        print("\(calendarDot(r.calendar))\(r.title ?? "")\(metaFor(r))")
                     }
                 }
             }
