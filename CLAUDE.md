@@ -39,21 +39,23 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for coding conventions, interface design ru
 reminders open
 reminders lists
 reminders list [list-name]
-reminders create <title> [list] [date]
-reminders edit <title> [list] [date] [--title "New Title"]
+reminders add <title> [list] [date]
+reminders change <title> [list] [date]
+reminders rename <title> <new-title> [list]
 reminders complete <title> [list]
-reminders delete <title> [list]
+reminders remove <title> [list]
 ```
 
-`edit` updates only fields that are specified. `--title` is the one flag in the tool — necessary to distinguish the new name from the existing title used to find the reminder.
+`change` updates only fields that are specified — everything else is left as-is.
+`rename` changes the title (identity) of a reminder; `change` modifies its attributes.
 
 ## Optional fields
 
 After title and optional list/date, keywords `repeat`, `priority`, `url`, and `note` can appear in any order. `note` must be last — it captures everything after it to end of string.
 
 ```
-reminders create "Pay rent" march 1 repeat monthly priority high note pay via bank
-reminders edit "Call dentist" friday priority medium url https://dentist.com note ask about X-rays
+reminders add "Pay rent" march 1 repeat monthly priority high note pay via bank
+reminders change "Call dentist" friday priority medium url https://dentist.com note ask about X-rays
 ```
 
 - `repeat`: `daily`, `weekly`, `monthly`, `yearly`, `every 2 weeks`, `last tuesday`, `2nd friday`, `the 15th`, `on the 1st of the month`, etc. Unknown values error rather than silently doing nothing.
@@ -66,7 +68,7 @@ reminders edit "Call dentist" friday priority medium url https://dentist.com not
 - Sections within a list are not exposed by EventKit — all reminders appear flat
 - Sub-tasks have no parent-child relationship in the public EventKit API
 - Sharing state (who a list is shared with) is not accessible via EventKit
-- `complete` and `delete` only search incomplete reminders, matched by title (first match wins)
+- `complete` and `remove` only search incomplete reminders, matched by title (first match wins)
 
 ## Deployment
 

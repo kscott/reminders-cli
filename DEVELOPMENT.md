@@ -26,16 +26,19 @@ The tool uses positional arguments and natural language keywords — not flags.
 
 **Correct:**
 ```
-reminders create "Pay rent" march 1 repeat monthly
-reminders edit "Buy groceries" "Daily Life" friday repeat weekly
+reminders add "Pay rent" march 1 repeat monthly
+reminders change "Buy groceries" "Daily Life" friday repeat weekly
+reminders rename "Buy groceries" "Weekly shopping"
 ```
 
 **Avoid:**
 ```
-reminders create "Pay rent" --date "march 1" --repeat monthly   # don't do this
+reminders add "Pay rent" --date "march 1" --repeat monthly   # don't do this
 ```
 
-The one exception is `--title` in the `edit` command. It's necessary because there's no unambiguous way to distinguish the existing title (used to find the reminder) from a new title (what to rename it to) positionally.
+There are no flags in this tool. `rename` is a dedicated command — it changes the
+identity of a reminder (its title). `change` modifies attributes. They are distinct
+operations, not variants of the same thing.
 
 ## Argument parsing conventions
 
@@ -69,10 +72,11 @@ Commands confirm what they did. Format:
 
 | Command | Output |
 |---------|--------|
-| `create` | `Created: <title> (in <list>)[ due <date>][ repeat <freq>]` |
-| `edit` | `Updated "<title>": <change>, <change>` |
+| `add` | `Added: <title> (in <list>)[ due <date>][ repeat <freq>]` |
+| `change` | `Updated "<title>": <change>, <change>` |
+| `rename` | `Renamed: "<old>" → "<new>"` |
 | `complete` | `Completed: <title>` |
-| `delete` | `Deleted: <title>` |
+| `remove` | `Removed: <title>` |
 
 Errors go to stderr via `fail()`, which exits non-zero. No silent failures.
 

@@ -69,10 +69,11 @@ reminders open                                                     # Open the Re
 reminders lists                                                    # Show all reminder lists
 reminders list [list-name] [by due|priority|title|created]         # List incomplete reminders
 reminders show <title> [list]                                      # Show full detail of a reminder
-reminders create <title> [list] [date]                             # Create a reminder
-reminders edit <title> [list] [date] [--title T]                   # Edit fields
+reminders add <title> [list] [date]                                # Add a reminder
+reminders change <title> [list] [date]                             # Change fields
+reminders rename <title> <new-title> [list]                        # Rename a reminder
 reminders complete <title> [list]                                  # Mark complete (case-insensitive)
-reminders delete <title> [list]                                    # Delete (case-insensitive)
+reminders remove <title> [list]                                    # Remove (case-insensitive)
 ```
 
 ### Date formats
@@ -80,10 +81,10 @@ reminders delete <title> [list]                                    # Delete (cas
 The title must always be quoted. Everything after — list name, date, options — can be typed naturally:
 
 ```
-reminders create "Call dentist" tomorrow
-reminders create "Team meeting" Work "tuesday at 2pm"
-reminders create "Pay rent" "march 1"
-reminders create "Weekly review" "next friday"
+reminders add "Call dentist" tomorrow
+reminders add "Team meeting" Work "tuesday at 2pm"
+reminders add "Pay rent" "march 1"
+reminders add "Weekly review" "next friday"
 ```
 
 If no time is given, the reminder is date-only (no alarm). Dates that have passed this year roll to next year.
@@ -100,8 +101,8 @@ If no time is given, the reminder is date-only (no alarm). Dates that have passe
 **`note` must always come last** — everything after it is treated as note text.
 
 ```
-reminders create "Pay rent" march 1 priority high note pay via bank transfer
-reminders create "Take vitamins" repeat daily priority low note take with breakfast
+reminders add "Pay rent" march 1 priority high note pay via bank transfer
+reminders add "Take vitamins" repeat daily priority low note take with breakfast
 ```
 
 ### Repeating reminders
@@ -124,23 +125,23 @@ reminders list "Daily Life" by priority  # single list, high priority first
 reminders list Work by created           # oldest added first
 ```
 
-### Editing reminders
+### Changing reminders
 
-`edit` updates only the fields you specify — everything else is left as-is:
+`change` updates only the fields you specify — everything else is left as-is:
 
 ```bash
-reminders edit "Buy groceries" friday repeat weekly priority medium
-reminders edit "Pay rent" "Daily Life" march 1 repeat monthly priority high
-reminders edit "Pay rent" due none        # remove due date
-reminders edit "Pay rent" repeat none     # remove recurrence
-reminders edit "Buy groceries" --title "Weekly shopping"
+reminders change "Buy groceries" friday repeat weekly priority medium
+reminders change "Pay rent" "Daily Life" march 1 repeat monthly priority high
+reminders change "Pay rent" due none        # remove due date
+reminders change "Pay rent" repeat none     # remove recurrence
+reminders rename "Buy groceries" "Weekly shopping"
 ```
 
 ## Known limitations
 
 - **Sections** within a list are not exposed by Apple's API — reminders appear flat
 - **Sub-tasks** have no parent-child relationship in the public API
-- `complete` and `delete` match by title against incomplete reminders (first match wins)
+- `complete` and `remove` match by title against incomplete reminders (first match wins)
 
 ## Project structure
 
