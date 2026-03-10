@@ -75,7 +75,7 @@ Commands confirm what they did. Format:
 | `add` | `Added: <title> (in <list>)[ due <date>][ repeat <freq>]` |
 | `change` | `Updated "<title>": <change>, <change>` |
 | `rename` | `Renamed: "<old>" → "<new>"` |
-| `complete` | `Completed: <title>` |
+| `done` | `Done: <title>` |
 | `remove` | `Removed: <title>` |
 
 Errors go to stderr via `fail()`, which exits non-zero. No silent failures.

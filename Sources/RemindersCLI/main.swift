@@ -50,6 +50,7 @@ func usage() -> Never {
       reminders add <name> [list] [date]              # Add a reminder
       reminders change <name> [list] [field value]   # Change fields; use "none" to clear
       reminders rename <name> <new-name> [list]      # Rename a reminder
+      reminders search <query>                         # Search titles and notes
       reminders show <name> [list]                   # Show full detail of a reminder
       reminders done <name> [list]                   # Mark a reminder done
       reminders remove <name> [list]                 # Remove a reminder
@@ -458,6 +459,42 @@ store.requestFullAccessToReminders { granted, _ in
                 print("Renamed: \"\(oldTitle)\" → \"\(newTitle)\"")
             } catch {
                 fail("Could not rename: \(error.localizedDescription)")
+            }
+            semaphore.signal()
+        }
+
+    case "find":
+        guard args.count > 1 else { fail("provide a search query") }
+        let query      = args.dropFirst().joined(separator: " ")
+        let lower      = query.lowercased()
+        let allCals    = store.calendars(for: .reminder)
+        let predicate  = store.predicateForIncompleteReminders(
+            withDueDateStarting: nil, ending: nil, calendars: allCals)
+        store.fetchReminders(matching: predicate) { reminders in
+            let cal = Calendar.current
+            let matches = (reminders ?? []).filter {
+                ($0.title ?? "").lowercased().contains(lower) ||
+                ($0.notes ?? "").lowercased().contains(lower)
+            }.sorted { a, b in
+                let da = a.dueDateComponents.flatMap { cal.date(from: $0) }
+                let db = b.dueDateComponents.flatMap { cal.date(from: $0) }
+                switch (da, db) {
+                case (nil, nil):     return (a.title ?? "") < (b.title ?? "")
+                case (nil, _):       return false
+                case (_, nil):       return true
+                case (let x?, let y?): return x < y
+                }
+            }
+            if matches.isEmpty {
+                print("No reminders matching '\(query)'")
+            } else {
+                for r in matches {
+                    var meta = "  [\(r.calendar.title)]"
+                    if let comps = r.dueDateComponents, let date = cal.date(from: comps) {
+                        meta = "  ·  due \(formatDate(date, showTime: comps.hour != nil))" + meta
+                    }
+                    print("\(calendarDot(r.calendar))\(r.title ?? "")\(meta)")
+                }
             }
             semaphore.signal()
         }

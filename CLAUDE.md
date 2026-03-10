@@ -38,11 +38,12 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for coding conventions, interface design ru
 ```
 reminders open
 reminders lists
-reminders list [list-name]
+reminders list [name]
+reminders find <query>
 reminders add <title> [list] [date]
 reminders change <title> [list] [date]
 reminders rename <title> <new-title> [list]
-reminders complete <title> [list]
+reminders done <title> [list]
 reminders remove <title> [list]
 ```
 

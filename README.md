@@ -67,12 +67,13 @@ reminders                                                          # Show help
 reminders --version                                                # Show version
 reminders open                                                     # Open the Reminders app
 reminders lists                                                    # Show all reminder lists
-reminders list [list-name] [by due|priority|title|created]         # List incomplete reminders
+reminders list [name] [by due|priority|title|created]              # List incomplete reminders
+reminders find <query>                                             # Find reminders by title or note
 reminders show <title> [list]                                      # Show full detail of a reminder
 reminders add <title> [list] [date]                                # Add a reminder
 reminders change <title> [list] [date]                             # Change fields
 reminders rename <title> <new-title> [list]                        # Rename a reminder
-reminders complete <title> [list]                                  # Mark complete (case-insensitive)
+reminders done <title> [list]                                      # Mark complete (case-insensitive)
 reminders remove <title> [list]                                    # Remove (case-insensitive)
 ```
 
@@ -141,7 +142,7 @@ reminders rename "Buy groceries" "Weekly shopping"
 
 - **Sections** within a list are not exposed by Apple's API — reminders appear flat
 - **Sub-tasks** have no parent-child relationship in the public API
-- `complete` and `remove` match by title against incomplete reminders (first match wins)
+- `done` and `remove` match by title against incomplete reminders (first match wins)
 
 ## Project structure
 
