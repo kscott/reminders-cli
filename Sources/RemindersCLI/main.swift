@@ -4,11 +4,11 @@
 // Handles argument parsing and all EventKit/AppKit interactions.
 // Date parsing is delegated to RemindersLib so it can be unit tested independently.
 
-import Darwin
 import Foundation
 import AppKit
 import EventKit
 import RemindersLib
+import GetClearKit
 
 let version = "1.0.0"
 
@@ -16,23 +16,8 @@ let store = EKEventStore()
 let semaphore = DispatchSemaphore(value: 0)
 let args = Array(CommandLine.arguments.dropFirst())
 
-func fail(_ msg: String) -> Never {
-    fputs("Error: \(msg)\n", stderr)
-    exit(1)
-}
-
-// MARK: - ANSI color
-
-private let ansiEnabled: Bool = {
-    ProcessInfo.processInfo.environment["NO_COLOR"] == nil &&
-    isatty(STDOUT_FILENO) != 0
-}()
-
-private func bold(_ s: String) -> String { ansiEnabled ? "\u{1B}[1m\(s)\u{1B}[0m" : s }
-private func dim(_ s: String)  -> String { ansiEnabled ? "\u{1B}[2m\(s)\u{1B}[0m" : s }
-
 func calendarDot(_ calendar: EKCalendar) -> String {
-    guard ansiEnabled else { return "  " }
+    guard ANSI.enabled else { return "  " }
     guard let cg = calendar.cgColor else { return "  " }
     let colorSpace = cg.colorSpace?.model
     let components = cg.components ?? []
@@ -114,8 +99,8 @@ func toEKRule(_ spec: RecurrenceSpec) -> EKRecurrenceRule {
 }
 
 guard let cmd = args.first else { usage() }
-if cmd == "--version" || cmd == "-v" || cmd == "version" { print(version); exit(0) }
-if cmd == "--help"    || cmd == "-h" || cmd == "help"    { usage() }
+if isVersionFlag(cmd) { print(version); exit(0) }
+if isHelpFlag(cmd)    { usage() }
 
 store.requestFullAccessToReminders { granted, _ in
     guard granted else { fail("Reminders access denied") }
@@ -206,7 +191,7 @@ store.requestFullAccessToReminders { granted, _ in
             if filterList != nil {
                 let sorted = (reminders ?? []).sorted(by: sortFn)
                 for r in sorted {
-                    print("\(calendarDot(r.calendar))\(bold(r.title ?? ""))\(dim(metaFor(r)))")
+                    print("\(calendarDot(r.calendar))\(ANSI.bold(r.title ?? ""))\(ANSI.dim(metaFor(r)))")
                 }
             } else {
                 // Group by list, sort within each group
@@ -215,9 +200,9 @@ store.requestFullAccessToReminders { granted, _ in
                 for listName in listNames {
                     let listCal = store.calendars(for: .reminder).first { $0.title == listName }
                     let dot = listCal.map { calendarDot($0) } ?? "  "
-                    print("\(dot)\(bold(listName))")
+                    print("\(dot)\(ANSI.bold(listName))")
                     for r in (grouped[listName] ?? []).sorted(by: sortFn) {
-                        print("\(calendarDot(r.calendar))\(bold(r.title ?? ""))\(dim(metaFor(r)))")
+                        print("\(calendarDot(r.calendar))\(ANSI.bold(r.title ?? ""))\(ANSI.dim(metaFor(r)))")
                     }
                 }
             }
@@ -526,7 +511,7 @@ store.requestFullAccessToReminders { granted, _ in
                     if let comps = r.dueDateComponents, let date = cal.date(from: comps) {
                         meta = "  ·  due \(formatDate(date, showTime: comps.hour != nil))" + meta
                     }
-                    print("\(calendarDot(r.calendar))\(bold(r.title ?? ""))\(dim(meta))")
+                    print("\(calendarDot(r.calendar))\(ANSI.bold(r.title ?? ""))\(ANSI.dim(meta))")
                 }
             }
             semaphore.signal()
