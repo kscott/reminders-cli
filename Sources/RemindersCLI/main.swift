@@ -4,6 +4,7 @@
 // Handles argument parsing and all EventKit/AppKit interactions.
 // Date parsing is delegated to RemindersLib so it can be unit tested independently.
 
+import Darwin
 import Foundation
 import AppKit
 import EventKit
@@ -20,8 +21,18 @@ func fail(_ msg: String) -> Never {
     exit(1)
 }
 
+// MARK: - ANSI color
+
+private let ansiEnabled: Bool = {
+    ProcessInfo.processInfo.environment["NO_COLOR"] == nil &&
+    isatty(STDOUT_FILENO) != 0
+}()
+
+private func bold(_ s: String) -> String { ansiEnabled ? "\u{1B}[1m\(s)\u{1B}[0m" : s }
+private func dim(_ s: String)  -> String { ansiEnabled ? "\u{1B}[2m\(s)\u{1B}[0m" : s }
+
 func calendarDot(_ calendar: EKCalendar) -> String {
-    guard ProcessInfo.processInfo.environment["NO_COLOR"] == nil else { return "  " }
+    guard ansiEnabled else { return "  " }
     guard let cg = calendar.cgColor else { return "  " }
     let colorSpace = cg.colorSpace?.model
     let components = cg.components ?? []
@@ -194,7 +205,9 @@ store.requestFullAccessToReminders { granted, _ in
 
             if filterList != nil {
                 let sorted = (reminders ?? []).sorted(by: sortFn)
-                for r in sorted { print("\(calendarDot(r.calendar))\(r.title ?? "")\(metaFor(r))") }
+                for r in sorted {
+                    print("\(calendarDot(r.calendar))\(bold(r.title ?? ""))\(dim(metaFor(r)))")
+                }
             } else {
                 // Group by list, sort within each group
                 let grouped = Dictionary(grouping: reminders ?? [], by: { $0.calendar.title })
@@ -202,9 +215,9 @@ store.requestFullAccessToReminders { granted, _ in
                 for listName in listNames {
                     let listCal = store.calendars(for: .reminder).first { $0.title == listName }
                     let dot = listCal.map { calendarDot($0) } ?? "  "
-                    print("\(dot)--- \(listName) ---")
+                    print("\(dot)\(bold(listName))")
                     for r in (grouped[listName] ?? []).sorted(by: sortFn) {
-                        print("\(calendarDot(r.calendar))\(r.title ?? "")\(metaFor(r))")
+                        print("\(calendarDot(r.calendar))\(bold(r.title ?? ""))\(dim(metaFor(r)))")
                     }
                 }
             }
@@ -513,7 +526,7 @@ store.requestFullAccessToReminders { granted, _ in
                     if let comps = r.dueDateComponents, let date = cal.date(from: comps) {
                         meta = "  ·  due \(formatDate(date, showTime: comps.hour != nil))" + meta
                     }
-                    print("\(calendarDot(r.calendar))\(r.title ?? "")\(meta)")
+                    print("\(calendarDot(r.calendar))\(bold(r.title ?? ""))\(dim(meta))")
                 }
             }
             semaphore.signal()
