@@ -30,7 +30,10 @@ let package = Package(
         // with just the Swift CLI toolchain (no Xcode required)
         .executableTarget(
             name: "reminders-tests",
-            dependencies: ["RemindersLib"],
+            dependencies: [
+                "RemindersLib",
+                .product(name: "GetClearKit", package: "get-clear"),
+            ],
             path: "Tests/RemindersLibTests"
         ),
     ]

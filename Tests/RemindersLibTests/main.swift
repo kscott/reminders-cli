@@ -5,6 +5,7 @@
 
 import Foundation
 import RemindersLib
+import GetClearKit
 
 // MARK: - Minimal test harness
 
