@@ -55,7 +55,10 @@ public func parseOptions(_ s: String) -> ParsedOptions {
     matches.sort { $0.range.lowerBound < $1.range.lowerBound }
 
     // Everything before the first keyword is the date.
+    // Strip a leading "due" if present — natural to say "due friday" but it's not part of the date.
     result.date = (matches.first.map { String(work[..<$0.range.lowerBound]) } ?? work)
+        .trimmingCharacters(in: .whitespaces)
+        .replacingOccurrences(of: #"(?i)^due\s+"#, with: "", options: .regularExpression)
         .trimmingCharacters(in: .whitespaces)
 
     // Each keyword's value runs from its end to the start of the next keyword (or end of string).

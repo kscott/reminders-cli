@@ -334,6 +334,25 @@ final class TestRunner: @unchecked Sendable {
             expect("note",         o.note       == "take with food")
         }
 
+        suite("parseOptions — due keyword prefix stripped") {
+            // Claude naturally prepends "due" to dates — it should be silently stripped
+            let o1 = parseOptions("due friday at 9am repeat weekly")
+            expect("due prefix stripped from weekday+time", o1.date == "friday at 9am")
+            expect("repeat preserved after due prefix",     o1.recurrence == "weekly")
+
+            let o2 = parseOptions("due 2026-03-20 at 9am")
+            expect("due prefix stripped from ISO date",     o2.date == "2026-03-20 at 9am")
+
+            let o3 = parseOptions("due friday")
+            expect("due prefix stripped — bare weekday",    o3.date == "friday")
+
+            let o4 = parseOptions("due none")
+            expect("due none preserved as 'none'",          o4.date == "none")
+
+            let o5 = parseOptions("friday at 9am repeat weekly")
+            expect("no due prefix — unchanged",             o5.date == "friday at 9am")
+        }
+
         suite("parseOptions — any keyword order") {
             let o1 = parseOptions("priority high repeat weekly")
             expect("priority before repeat — priority", o1.priority   == "high")
