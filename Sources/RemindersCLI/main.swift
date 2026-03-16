@@ -377,9 +377,17 @@ store.requestFullAccessToReminders { granted, _ in
                         changes.append("url → \(opts.url)")
                     }
                 }
+                if !opts.list.isEmpty {
+                    guard let targetCal = store.calendars(for: .reminder).first(where: {
+                        $0.title.caseInsensitiveCompare(opts.list) == .orderedSame
+                    }) else { fail("List not found: \(opts.list)") }
+                    let from = reminder.calendar.title
+                    reminder.calendar = targetCal
+                    changes.append("list → \(from) → \(targetCal.title)")
+                }
             }
 
-            guard !changes.isEmpty else { fail("nothing to change — specify a date, repeat, priority, note, or url") }
+            guard !changes.isEmpty else { fail("nothing to change — specify a date, repeat, priority, note, url, or list") }
 
             do {
                 try store.save(reminder, commit: true)

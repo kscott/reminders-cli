@@ -21,6 +21,7 @@ public struct ParsedOptions {
     public var priority: String   = ""
     public var note: String       = ""
     public var url: String        = ""
+    public var list: String       = ""
 
     public init() {}
 }
@@ -45,6 +46,7 @@ public func parseOptions(_ s: String) -> ParsedOptions {
         ("repeat",   #"\brepeat(?:s|ing|ed)?\b"#),
         ("priority", #"\bpriority\b"#),
         ("url",      #"\burl\b"#),
+        ("list",     #"\blist\b"#),
     ]
     var matches: [KwMatch] = []
     for (field, pattern) in patterns {
@@ -71,6 +73,7 @@ public func parseOptions(_ s: String) -> ParsedOptions {
         case "repeat":   result.recurrence = value
         case "priority": result.priority   = value
         case "url":      result.url        = value
+        case "list":     result.list       = value
         default: break
         }
     }

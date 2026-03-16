@@ -360,6 +360,26 @@ final class TestRunner: @unchecked Sendable {
             expect("date prefix stripped — ISO date",       o7.date == "2026-03-18")
         }
 
+        suite("parseOptions — list keyword") {
+            let o1 = parseOptions("list Ibotta")
+            expect("list only",              o1.list == "Ibotta")
+            expect("list only — date empty", o1.date == "")
+
+            let o2 = parseOptions("friday list Ibotta")
+            expect("date + list — date",     o2.date == "friday")
+            expect("date + list — list",     o2.list == "Ibotta")
+
+            let o3 = parseOptions("list My Work Tasks repeat weekly")
+            expect("multi-word list name",   o3.list == "My Work Tasks")
+            expect("repeat after list",      o3.recurrence == "weekly")
+
+            let o4 = parseOptions("friday repeat weekly list Ibotta priority high")
+            expect("all fields — date",      o4.date       == "friday")
+            expect("all fields — repeat",    o4.recurrence == "weekly")
+            expect("all fields — list",      o4.list       == "Ibotta")
+            expect("all fields — priority",  o4.priority   == "high")
+        }
+
         suite("parseOptions — any keyword order") {
             let o1 = parseOptions("priority high repeat weekly")
             expect("priority before repeat — priority", o1.priority   == "high")
