@@ -351,6 +351,13 @@ final class TestRunner: @unchecked Sendable {
 
             let o5 = parseOptions("friday at 9am repeat weekly")
             expect("no due prefix — unchanged",             o5.date == "friday at 9am")
+
+            // "date" keyword prefix — same fix
+            let o6 = parseOptions("date wednesday")
+            expect("date prefix stripped — weekday",        o6.date == "wednesday")
+
+            let o7 = parseOptions("date 2026-03-18")
+            expect("date prefix stripped — ISO date",       o7.date == "2026-03-18")
         }
 
         suite("parseOptions — any keyword order") {
