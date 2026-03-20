@@ -260,6 +260,7 @@ store.requestFullAccessToReminders { granted, _ in
         if !opts.url.isEmpty, let u = URL(string: opts.url) { reminder.url = u }
         do {
             try store.save(reminder, commit: true)
+            try? ActivityLog.write(tool: "reminders", cmd: "add", desc: title, container: cal.title)
             var parts = ["Added: \(title) (in \(cal.title))"]
             if let pd = parsedDate          { parts.append("due \(formatDate(pd.date, showTime: pd.hasTime))") }
             if let s = recurrenceSpec       { parts.append(describeRecurrence(s)) }
@@ -391,6 +392,7 @@ store.requestFullAccessToReminders { granted, _ in
 
             do {
                 try store.save(reminder, commit: true)
+                try? ActivityLog.write(tool: "reminders", cmd: "change", desc: title, container: reminder.calendar.title)
                 print("Updated \"\(title)\": \(changes.joined(separator: ", "))")
             } catch {
                 fail("Could not save: \(error.localizedDescription)")
@@ -482,6 +484,7 @@ store.requestFullAccessToReminders { granted, _ in
             reminder.title = newTitle
             do {
                 try store.save(reminder, commit: true)
+                try? ActivityLog.write(tool: "reminders", cmd: "rename", desc: "\(oldTitle) → \(newTitle)", container: reminder.calendar.title)
                 print("Renamed: \"\(oldTitle)\" → \"\(newTitle)\"")
             } catch {
                 fail("Could not rename: \(error.localizedDescription)")
@@ -555,9 +558,12 @@ store.requestFullAccessToReminders { granted, _ in
                 if cmd == "done" {
                     reminder.isCompleted = true
                     try store.save(reminder, commit: true)
+                    try? ActivityLog.write(tool: "reminders", cmd: "done", desc: title, container: reminder.calendar.title)
                     print("Done: \(title)")
                 } else {
+                    let listName = reminder.calendar.title
                     try store.remove(reminder, commit: true)
+                    try? ActivityLog.write(tool: "reminders", cmd: "remove", desc: title, container: listName)
                     print("Removed: \(title)")
                 }
             } catch {
