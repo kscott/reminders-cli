@@ -5,7 +5,7 @@ let package = Package(
     name: "reminders-cli",
     platforms: [.macOS(.v14)],
     dependencies: [
-        .package(path: "../get-clear"),
+        .package(url: "https://github.com/kscott/get-clear.git", branch: "main"),
     ],
     targets: [
         // Pure logic — no Apple framework dependencies, fully testable
