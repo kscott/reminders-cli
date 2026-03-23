@@ -10,7 +10,7 @@ import EventKit
 import RemindersLib
 import GetClearKit
 
-let version = "1.0.0"
+let version = builtVersion
 
 let store = EKEventStore()
 let semaphore = DispatchSemaphore(value: 0)
