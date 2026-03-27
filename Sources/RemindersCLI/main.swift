@@ -98,9 +98,9 @@ func toEKRule(_ spec: RecurrenceSpec) -> EKRecurrenceRule {
     return EKRecurrenceRule(recurrenceWith: ekFreqs[spec.frequency]!, interval: spec.interval, end: nil)
 }
 
-guard let cmd = args.first else { usage() }
-if args.contains(where: { isVersionFlag($0) }) { print(version); exit(0) }
-if args.contains(where: { isHelpFlag($0) })    { usage() }
+let dispatch = parseArgs(args)
+if case .version = dispatch { print(version); exit(0) }
+guard case .command(let cmd, let args) = dispatch else { usage() }
 
 store.requestFullAccessToReminders { granted, _ in
     guard granted else { fail("Reminders access denied") }
