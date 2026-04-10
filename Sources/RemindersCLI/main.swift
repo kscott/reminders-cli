@@ -11,6 +11,7 @@ import RemindersLib
 import GetClearKit
 
 let version = builtVersion
+let versionString = "\(builtVersion) (Get Clear \(suiteVersion))"
 
 let store = EKEventStore()
 let semaphore = DispatchSemaphore(value: 0)
@@ -37,7 +38,7 @@ func calendarDot(_ calendar: EKCalendar) -> String {
 
 func usage() -> Never {
     print("""
-    reminders \(version) — CLI for Apple Reminders
+    reminders \(versionString) — CLI for Apple Reminders
 
     Usage:
       reminders open                                 # Open the Reminders app
@@ -99,7 +100,7 @@ func toEKRule(_ spec: RecurrenceSpec) -> EKRecurrenceRule {
 }
 
 let dispatch = parseArgs(args)
-if case .version = dispatch { print(version); exit(0) }
+if case .version = dispatch { print(versionString); exit(0) }
 guard case .command(let cmd, let args) = dispatch else { usage() }
 
 store.requestFullAccessToReminders { granted, _ in
