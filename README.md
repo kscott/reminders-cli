@@ -4,6 +4,8 @@ A command-line tool that lets Claude create, manage, and query your Apple Remind
 
 Instead of switching to the Reminders app, you tell Claude what you need and it handles it. The tool connects directly to Apple's native Reminders framework, so your existing lists, reminders, and sync all work exactly as before.
 
+Part of the [Get Clear](https://github.com/kscott/get-clear) suite.
+
 ## Using with Claude
 
 This is the main use case. Tell Claude what you want in plain language:
@@ -21,46 +23,39 @@ Claude translates your words into the right commands, picks the correct list, pa
 
 - **Mention the list** if you have similar reminders in multiple places ("put it in Work", "add it to Daily Life")
 - **Include a time** if you want an alarm ("Friday at 3pm") — date-only reminders have no notification
-- **Repeat reminders** — just say "every week", "monthly", "every other Tuesday" and Claude knows what to do
+- **Repeat reminders** — just say "every week", "monthly", "last tuesday" and Claude knows what to do
 - **Clearing fields** — "remove the due date" or "clear the note" works naturally
 
 ## Setup
 
 ### Requirements
 
-- **macOS 14 (Sonoma) or later**
-- **Apple Silicon Mac** (arm64) for the pre-built binary; Intel Macs must build from source
-- **`~/bin` in your `$PATH`** — the installer puts the binary there. If `reminders` isn't found after install, add this to your `~/.zshrc` and open a new Terminal window:
+- macOS 14 (Sonoma) or later
+- Apple Silicon Mac (arm64) for the pre-built binary; Intel Macs must build from source
 
-  ```bash
-  export PATH="$HOME/bin:$PATH"
-  ```
+### Install
 
-### Install (pre-built binary — no Xcode required)
+Install the full Get Clear suite via the PKG installer — download from the [latest release](https://github.com/kscott/get-clear/releases/latest) and run it.
 
-1. Download `reminders-cli-v1.0.0-arm64.tar.gz` from the [latest release](https://github.com/kscott/reminders-cli/releases/latest)
-2. In Terminal:
+This installs all five tools to `/usr/local/bin`. Make sure that's in your `$PATH`:
 
 ```bash
-cd ~/Downloads
-tar -xzf reminders-cli-v1.0.0-arm64.tar.gz
-cd reminders-cli-v1.0.0
-./install.sh
+export PATH="/usr/local/bin:$PATH"   # add to ~/.zshrc
 ```
 
 On first run, macOS will prompt you to grant Reminders access.
 
-### Build from source (requires Xcode Command Line Tools)
+### Build from source
 
 ```bash
 xcode-select --install   # if not already installed
 git clone https://github.com/kscott/reminders-cli.git ~/dev/reminders-cli
-~/dev/reminders-cli/reminders setup
+cd ~/dev/reminders-cli
+swift build -c release
+cp .build/release/reminders-bin /usr/local/bin/reminders
 ```
 
 ## Command reference
-
-For direct use or scripting — Claude handles all of this automatically when you ask conversationally.
 
 ```
 reminders                                                          # Show help
@@ -69,23 +64,22 @@ reminders open                                                     # Open the Re
 reminders lists                                                    # Show all reminder lists
 reminders list [name] [by due|priority|title|created]              # List incomplete reminders
 reminders find <query>                                             # Find reminders by title or note
-reminders show <title> [list]                                      # Show full detail of a reminder
-reminders add <title> [list] [date]                                # Add a reminder
-reminders change <title> [list] [date]                             # Change fields
-reminders rename <title> <new-title> [list]                        # Rename a reminder
-reminders done <title> [list]                                      # Mark complete (case-insensitive)
-reminders remove <title> [list]                                    # Remove (case-insensitive)
+reminders show <title>                                             # Show full detail of a reminder
+reminders add <title> [list] [options]                             # Add a reminder
+reminders change <title> [list] [options]                          # Change fields on a reminder
+reminders rename <title> <new-title>                               # Rename a reminder
+reminders done <title>                                             # Mark complete
+reminders remove <title>                                           # Remove a reminder
 ```
 
 ### Date formats
-
-The title must always be quoted. Everything after — list name, date, options — can be typed naturally:
 
 ```
 reminders add "Call dentist" tomorrow
 reminders add "Team meeting" Work "tuesday at 2pm"
 reminders add "Pay rent" "march 1"
 reminders add "Weekly review" "next friday"
+reminders add "Submit report" "2026-04-15 at 9am"
 ```
 
 If no time is given, the reminder is date-only (no alarm). Dates that have passed this year roll to next year.
@@ -98,6 +92,7 @@ If no time is given, the reminder is date-only (no alarm). Dates that have passe
 | `priority` | `high`, `medium`, `low`, `none` | `priority high` |
 | `url` | any URL | `url https://example.com` |
 | `note` | free text to end of line | `note call before 5pm` |
+| `list` | list name | `list Work` |
 
 **`note` must always come last** — everything after it is treated as note text.
 
@@ -108,7 +103,7 @@ reminders add "Take vitamins" repeat daily priority low note take with breakfast
 
 ### Repeating reminders
 
-Use the word `repeat` (or `repeats`, `repeating`, `repeated`) before or after the date:
+Use `repeat` (or `repeats`, `repeating`, `repeated`) before or after the date:
 
 | Format | Example |
 |--------|---------|
@@ -118,10 +113,10 @@ Use the word `repeat` (or `repeats`, `repeating`, `repeated`) before or after th
 | Ordinal weekday | `first monday`, `last tuesday`, `2nd friday` |
 | Day of month | `the 1st`, `on the 15th`, `the 22nd` |
 
-### Listing reminders
+### Listing and sorting
 
 ```
-reminders list                           # all lists, by due date
+reminders list                           # all lists, sorted by due date
 reminders list "Daily Life" by priority  # single list, high priority first
 reminders list Work by created           # oldest added first
 ```
@@ -132,7 +127,7 @@ reminders list Work by created           # oldest added first
 
 ```bash
 reminders change "Buy groceries" friday repeat weekly priority medium
-reminders change "Pay rent" "Daily Life" march 1 repeat monthly priority high
+reminders change "Pay rent" march 1 repeat monthly priority high
 reminders change "Pay rent" due none        # remove due date
 reminders change "Pay rent" repeat none     # remove recurrence
 reminders rename "Buy groceries" "Weekly shopping"
@@ -142,29 +137,29 @@ reminders rename "Buy groceries" "Weekly shopping"
 
 - **Sections** within a list are not exposed by Apple's API — reminders appear flat
 - **Sub-tasks** have no parent-child relationship in the public API
-- `done` and `remove` match by title against incomplete reminders (first match wins)
+- Moving a reminder between lists is not yet supported — workaround: `remove` then `add`
+- `done` and `remove` require an exact (case-insensitive) title match
 
 ## Project structure
 
 ```
 reminders-cli/
-├── Package.swift                        # Swift Package Manager manifest
-├── reminders                            # Wrapper script (symlinked into ~/bin)
+├── Package.swift
 ├── Sources/
-│   ├── RemindersLib/
-│   │   ├── DateParsing.swift            # Date parsing logic (no Apple framework deps)
-│   │   └── RecurrenceParsing.swift      # Recurrence parsing logic (no Apple framework deps)
+│   ├── RemindersLib/                    # Pure Swift — no framework deps, fully testable
+│   │   ├── RecurrenceParsing.swift      # Parses recurrence strings into RecurrenceSpec
+│   │   └── OptionsParsing.swift         # Parses combined options strings into fields
 │   └── RemindersCLI/
 │       └── main.swift                   # CLI entry point (EventKit + AppKit)
 └── Tests/
-    └── RemindersLibTests/
-        └── main.swift                   # Test runner (no Xcode required)
+    └── RemindersLibTests/               # Quick + Nimble test suite
+        ├── DateParserSpec.swift
+        ├── RecurrenceParsingSpec.swift
+        └── OptionsParsingSpec.swift
 ```
 
 ## Tests
 
 ```bash
-reminders test
+swift test
 ```
-
-Builds and runs the test suite against the date and recurrence parsing logic. No Xcode required.
