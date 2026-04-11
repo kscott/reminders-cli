@@ -13,6 +13,7 @@ let package = Package(
         // Pure logic — no Apple framework dependencies, fully testable
         .target(
             name: "RemindersLib",
+            dependencies: [.product(name: "GetClearKit", package: "get-clear")],
             path: "Sources/RemindersLib"
         ),
         // Main binary — depends on RemindersLib plus EventKit/AppKit

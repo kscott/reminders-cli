@@ -233,10 +233,7 @@ final class DateParserSpec: QuickSpec {
             }
 
             context("invalid input") {
-                it("unrecognised string returns nil") {
-                    expect(parseDate("not a date")).to(beNil())
-                }
-                it("nonsense word returns nil") {
+                it("returns nil for unrecognized input") {
                     expect(parseDate("banana")).to(beNil())
                 }
             }

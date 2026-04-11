@@ -69,35 +69,6 @@ func usage() -> Never {
     exit(0)
 }
 
-func parsePriority(_ s: String) -> Int? {
-    switch s.lowercased().trimmingCharacters(in: .whitespaces) {
-    case "high":          return 1
-    case "medium", "med": return 5
-    case "low":           return 9
-    case "none":          return 0
-    default:              return nil
-    }
-}
-
-func toEKRule(_ spec: RecurrenceSpec) -> EKRecurrenceRule {
-    let ekFreqs: [RecurrenceFrequency: EKRecurrenceFrequency] =
-        [.daily:.daily, .weekly:.weekly, .monthly:.monthly, .yearly:.yearly]
-    if let ow = spec.ordinalWeekday {
-        let dow = EKRecurrenceDayOfWeek(dayOfTheWeek: EKWeekday(rawValue: ow.weekday)!,
-                                        weekNumber: ow.weekNumber)
-        return EKRecurrenceRule(recurrenceWith: .monthly, interval: 1,
-                                daysOfTheWeek: [dow], daysOfTheMonth: nil,
-                                monthsOfTheYear: nil, weeksOfTheYear: nil,
-                                daysOfTheYear: nil, setPositions: nil, end: nil)
-    }
-    if let day = spec.dayOfMonth {
-        return EKRecurrenceRule(recurrenceWith: .monthly, interval: 1,
-                                daysOfTheWeek: nil, daysOfTheMonth: [NSNumber(value: day)],
-                                monthsOfTheYear: nil, weeksOfTheYear: nil,
-                                daysOfTheYear: nil, setPositions: nil, end: nil)
-    }
-    return EKRecurrenceRule(recurrenceWith: ekFreqs[spec.frequency]!, interval: spec.interval, end: nil)
-}
 
 let dispatch = parseArgs(args)
 if case .version = dispatch { print(versionString); exit(0) }
@@ -158,52 +129,25 @@ store.requestFullAccessToReminders { granted, _ in
         store.fetchReminders(matching: predicate) { reminders in
             let cal = Calendar.current
 
-            func dueDate(of r: EKReminder) -> Date? {
-                r.dueDateComponents.flatMap { cal.date(from: $0) }
-            }
-            func byDue(_ a: EKReminder, _ b: EKReminder) -> Bool {
-                switch (dueDate(of: a), dueDate(of: b)) {
-                case (nil, nil):         return (a.title ?? "") < (b.title ?? "")
-                case (nil, _):           return false
-                case (_, nil):           return true
-                case (let da?, let db?): return da < db
-                }
-            }
             let sortFn: (EKReminder, EKReminder) -> Bool
             switch sortBy {
-            case "priority":
-                sortFn = { a, b in
-                    let pa = a.priority == 0 ? 10 : a.priority
-                    let pb = b.priority == 0 ? 10 : b.priority
-                    return pa != pb ? pa < pb : byDue(a, b)
-                }
-            case "title":
-                sortFn = { a, b in
-                    (a.title ?? "").localizedCaseInsensitiveCompare(b.title ?? "") == .orderedAscending
-                }
-            case "created":
-                sortFn = { a, b in
-                    (a.creationDate ?? .distantPast) < (b.creationDate ?? .distantPast)
-                }
-            default: // "due", "date"
-                sortFn = byDue
+            case "priority": sortFn = byPriority
+            case "title":    sortFn = byTitle
+            case "created":  sortFn = byCreated
+            default:         sortFn = byDue
             }
 
             func metaFor(_ r: EKReminder) -> String {
-                var parts: [String] = []
-                if let comps = r.dueDateComponents, let date = cal.date(from: comps) {
-                    parts.append(formatDate(date, showTime: comps.hour != nil))
+                let formattedDue = r.dueDateComponents.flatMap { comps in
+                    cal.date(from: comps).map { formatDate($0, showTime: comps.hour != nil) }
                 }
-                if r.hasRecurrenceRules { parts.append("repeating") }
-                switch r.priority {
-                case 1...4: parts.append("high")
-                case 5:     parts.append("medium")
-                case 6...9: parts.append("low")
-                default:    break
-                }
-                if r.notes != nil { parts.append("+ note") }
-                if r.url   != nil { parts.append("+ url") }
-                return parts.isEmpty ? "" : "  ·  " + parts.joined(separator: " · ")
+                return metaLine(for: ReminderMeta(
+                    formattedDue: formattedDue,
+                    isRepeating: r.hasRecurrenceRules,
+                    priority: r.priority,
+                    hasNote: r.notes != nil,
+                    hasURL: r.url != nil
+                ))
             }
 
             if filterList != nil {
@@ -336,77 +280,47 @@ store.requestFullAccessToReminders { granted, _ in
             }
             let reminder = matches[0]
 
-            var changes: [String] = []
-
-            if let str = newDateRepeat {
-                let opts = parseOptions(str)
-                if !opts.date.isEmpty {
-                    if opts.date.lowercased() == "none" {
-                        reminder.dueDateComponents = nil
-                        changes.append("due cleared")
-                    } else if let pd = parseDate(opts.date) {
-                        if pd.hasTime && !pd.hasDate, let existing = reminder.dueDateComponents {
-                            // Time-only input (e.g. "3pm") — preserve existing date, update time only
-                            var comps = existing
-                            let t = Calendar.current.dateComponents([.hour, .minute], from: pd.date)
-                            comps.hour = t.hour; comps.minute = t.minute
-                            reminder.dueDateComponents = comps
-                            let display = Calendar.current.date(from: comps) ?? pd.date
-                            changes.append("due → \(formatDate(display, showTime: true))")
-                        } else {
-                            let comps: Set<Calendar.Component> = pd.hasTime
-                                ? [.year, .month, .day, .hour, .minute] : [.year, .month, .day]
-                            reminder.dueDateComponents = Calendar.current.dateComponents(comps, from: pd.date)
-                            changes.append("due → \(formatDate(pd.date, showTime: pd.hasTime))")
-                        }
-                    }
-                }
-                if !opts.recurrence.isEmpty {
-                    if opts.recurrence.lowercased() == "none" {
-                        reminder.recurrenceRules?.forEach { reminder.removeRecurrenceRule($0) }
-                        changes.append("repeat cleared")
-                    } else {
-                        guard let spec = parseRecurrence(opts.recurrence) else {
-                            fail("Unrecognised repeat: \"\(opts.recurrence)\"")
-                        }
-                        reminder.recurrenceRules?.forEach { reminder.removeRecurrenceRule($0) }
-                        reminder.addRecurrenceRule(toEKRule(spec))
-                        changes.append(describeRecurrence(spec))
-                    }
-                }
-                if !opts.priority.isEmpty, let p = parsePriority(opts.priority) {
-                    reminder.priority = p
-                    changes.append(p == 0 ? "priority cleared" : "priority → \(opts.priority)")
-                }
-                if !opts.note.isEmpty {
-                    if opts.note.lowercased() == "none" {
-                        reminder.notes = nil
-                        changes.append("note cleared")
-                    } else {
-                        reminder.notes = opts.note
-                        changes.append("+ note")
-                    }
-                }
-                if !opts.url.isEmpty {
-                    if opts.url.lowercased() == "none" {
-                        reminder.url = nil
-                        changes.append("url cleared")
-                    } else if let u = URL(string: opts.url) {
-                        reminder.url = u
-                        changes.append("url → \(opts.url)")
-                    }
-                }
-                if !opts.list.isEmpty {
-                    guard let targetCal = store.calendars(for: .reminder).first(where: {
-                        $0.title.caseInsensitiveCompare(opts.list) == .orderedSame
-                    }) else { fail("List not found: \(opts.list)") }
-                    let from = reminder.calendar.title
-                    reminder.calendar = targetCal
-                    changes.append("list → \(from) → \(targetCal.title)")
-                }
+            let opts = newDateRepeat.map { parseOptions($0) } ?? ParsedOptions()
+            let reminderChanges: ReminderChanges
+            do {
+                reminderChanges = try parseReminderChanges(opts, existingDue: reminder.dueDateComponents)
+            } catch ReminderChangeError.nothingToChange {
+                fail("nothing to change — specify a date, repeat, priority, note, url, or list")
+            } catch ReminderChangeError.unrecognizedRecurrence(let s) {
+                fail("Unrecognised repeat: \"\(s)\"")
+            } catch {
+                fail("Change failed: \(error.localizedDescription)")
             }
 
-            guard !changes.isEmpty else { fail("nothing to change — specify a date, repeat, priority, note, url, or list") }
+            if case .cleared = reminderChanges.due { reminder.dueDateComponents = nil }
+            if case .set(let comps) = reminderChanges.due { reminder.dueDateComponents = comps }
+
+            if case .cleared = reminderChanges.recurrence {
+                reminder.recurrenceRules?.forEach { reminder.removeRecurrenceRule($0) }
+            }
+            if case .set(let spec) = reminderChanges.recurrence {
+                reminder.recurrenceRules?.forEach { reminder.removeRecurrenceRule($0) }
+                reminder.addRecurrenceRule(toEKRule(spec))
+            }
+
+            if case .set(let p) = reminderChanges.priority { reminder.priority = p }
+
+            if case .cleared = reminderChanges.note { reminder.notes = nil }
+            if case .set(let n) = reminderChanges.note { reminder.notes = n }
+
+            if case .cleared = reminderChanges.url { reminder.url = nil }
+            if case .set(let u) = reminderChanges.url, let url = URL(string: u) { reminder.url = url }
+
+            var descriptions = reminderChanges.descriptions
+            if case .set(let targetName) = reminderChanges.list {
+                guard let targetCal = store.calendars(for: .reminder).first(where: {
+                    $0.title.caseInsensitiveCompare(targetName) == .orderedSame
+                }) else { fail("List not found: \(targetName)") }
+                let from = reminder.calendar.title
+                reminder.calendar = targetCal
+                descriptions.append("list → \(from) → \(targetCal.title)")
+            }
+            let changes = descriptions
 
             do {
                 try store.save(reminder, commit: true)
