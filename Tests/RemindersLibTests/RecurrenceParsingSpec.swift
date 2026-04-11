@@ -24,7 +24,7 @@ final class RecurrenceParsingSpec: QuickSpec {
                 it("simple keywords produce no ordinal weekday") {
                     expect(parseRecurrence("weekly")?.ordinalWeekday).to(beNil())
                 }
-                it("returns nil for unrecognised string") { expect(parseRecurrence("banana")).to(beNil()) }
+                it("returns nil for unrecognized input") { expect(parseRecurrence("banana")).to(beNil()) }
             }
 
             context("intervals") {
@@ -141,6 +141,27 @@ final class RecurrenceParsingSpec: QuickSpec {
                 }
                 it("'on the 1st of the month' has dayOfMonth 1") {
                     expect(parseRecurrence("on the 1st of the month")?.dayOfMonth) == 1
+                }
+                it("'the 29th' has dayOfMonth 29") {
+                    expect(parseRecurrence("the 29th")?.dayOfMonth) == 29
+                }
+                it("'the 30th' has dayOfMonth 30") {
+                    expect(parseRecurrence("the 30th")?.dayOfMonth) == 30
+                }
+                it("'the 31st' has dayOfMonth 31") {
+                    expect(parseRecurrence("the 31st")?.dayOfMonth) == 31
+                }
+                it("day 32 is rejected") {
+                    expect(parseRecurrence("the 32nd")).to(beNil())
+                }
+                it("day 0 is rejected") {
+                    expect(parseRecurrence("the 0th")).to(beNil())
+                }
+                it("'last day of the month' returns nil — not yet supported") {
+                    expect(parseRecurrence("last day of the month")).to(beNil())
+                }
+                it("'end of month' returns nil — not yet supported") {
+                    expect(parseRecurrence("end of month")).to(beNil())
                 }
                 it("'2nd wednesday' is not treated as day-of-month") {
                     expect(parseRecurrence("2nd wednesday")?.dayOfMonth).to(beNil())
