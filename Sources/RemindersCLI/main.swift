@@ -1,8 +1,7 @@
 // main.swift
 //
-// Entry point for the reminders-bin executable.
-// Handles argument parsing and all EventKit/AppKit interactions.
-// Date parsing is delegated to RemindersLib so it can be unit tested independently.
+// Entry point for reminders-bin. Argument dispatch and EventKit lifecycle only.
+// Business logic lives in RemindersLib. EventKit helpers live in RemindersCLI/*.swift.
 
 import Foundation
 import AppKit
@@ -10,47 +9,27 @@ import EventKit
 import RemindersLib
 import GetClearKit
 
-let version = builtVersion
 let versionString = "\(builtVersion) (Get Clear \(suiteVersion))"
 
 let store = EKEventStore()
 let semaphore = DispatchSemaphore(value: 0)
 let args = Array(CommandLine.arguments.dropFirst())
 
-func calendarDot(_ calendar: EKCalendar) -> String {
-    guard ANSI.enabled else { return "  " }
-    guard let cg = calendar.cgColor else { return "  " }
-    let colorSpace = cg.colorSpace?.model
-    let components = cg.components ?? []
-    let r, g, b: Int
-    if colorSpace == .rgb, components.count >= 3 {
-        r = Int(components[0] * 255)
-        g = Int(components[1] * 255)
-        b = Int(components[2] * 255)
-    } else if colorSpace == .monochrome, components.count >= 1 {
-        let w = Int(components[0] * 255)
-        r = w; g = w; b = w
-    } else {
-        return "  "
-    }
-    return "\u{001B}[38;2;\(r);\(g);\(b)m●\u{001B}[0m "
-}
-
 func usage() -> Never {
     print("""
     reminders \(versionString) — CLI for Apple Reminders
 
     Usage:
-      reminders open                                 # Open the Reminders app
-      reminders lists                                # Show all reminder lists
+      reminders open                                   # Open the Reminders app
+      reminders lists                                  # Show all reminder lists
       reminders list [name] [by due|priority|title|created]
-      reminders add <name> [list] [date]              # Add a reminder
-      reminders change <name> [list] [field value]   # Change fields; use "none" to clear
-      reminders rename <name> <new-name> [list]      # Rename a reminder
-      reminders find <query>                          # Search titles and notes
-      reminders show <name> [list]                   # Show full detail of a reminder
-      reminders done <name> [list]                   # Mark a reminder done
-      reminders remove <name> [list]                 # Remove a reminder
+      reminders add <name> [list] [date]               # Add a reminder
+      reminders change <name> [list] [field value]     # Change fields; use "none" to clear
+      reminders rename <name> <new-name> [list]        # Rename a reminder
+      reminders find <query>                           # Search titles and notes
+      reminders show <name> [list]                     # Show full detail of a reminder
+      reminders done <name> [list]                     # Mark a reminder done
+      reminders remove <name> [list]                   # Remove a reminder
 
     Date examples:
       tomorrow, friday, "next friday", "march 15", "2026-03-10", 3pm, "friday at 5pm"
@@ -69,7 +48,6 @@ func usage() -> Never {
     exit(0)
 }
 
-
 let dispatch = parseArgs(args)
 if case .version = dispatch { print(versionString); exit(0) }
 guard case .command(let cmd, let args) = dispatch else { usage() }
@@ -83,12 +61,11 @@ store.requestFullAccessToReminders { granted, _ in
         let rangeStr = args.count > 1 ? Array(args.dropFirst()).joined(separator: " ") : "today"
         guard let range = parseRange(rangeStr) else { fail("Unrecognised range: \(rangeStr)") }
         let isToday = rangeStr == "today"
-        let entries: [ActivityLogEntry]
         var dateUsed = Date()
+        let entries: [ActivityLogEntry]
         if isToday {
             let result = ActivityLogReader.entriesForDisplay(in: range.start...range.end)
-            entries  = result.entries
-            dateUsed = result.dateUsed
+            entries = result.entries; dateUsed = result.dateUsed
         } else {
             entries = ActivityLogReader.entries(in: range.start...range.end, tool: "reminders")
         }
@@ -106,7 +83,6 @@ store.requestFullAccessToReminders { granted, _ in
         semaphore.signal()
 
     case "list":
-        // Parse: list [list-name] [by <field>]
         var listArgs = Array(args.dropFirst())
         var sortBy = "due"
         if let byIdx = listArgs.firstIndex(of: "by"), byIdx + 1 < listArgs.count {
@@ -150,18 +126,14 @@ store.requestFullAccessToReminders { granted, _ in
                 ))
             }
 
-            if filterList != nil {
-                let sorted = (reminders ?? []).sorted(by: sortFn)
-                for r in sorted {
+            if let filterList {
+                for r in (reminders ?? []).sorted(by: sortFn) {
                     print("\(calendarDot(r.calendar))\(ANSI.bold(r.title ?? ""))\(ANSI.dim(metaFor(r)))")
                 }
             } else {
-                // Group by list, sort within each group
                 let grouped = Dictionary(grouping: reminders ?? [], by: { $0.calendar.title })
-                let listNames = grouped.keys.sorted()
-                for listName in listNames {
-                    let listCal = store.calendars(for: .reminder).first { $0.title == listName }
-                    let dot = listCal.map { calendarDot($0) } ?? "  "
+                for listName in grouped.keys.sorted() {
+                    let dot = store.calendars(for: .reminder).first { $0.title == listName }.map { calendarDot($0) } ?? "  "
                     print("\(dot)\(ANSI.bold(listName))")
                     for r in (grouped[listName] ?? []).sorted(by: sortFn) {
                         print("\(calendarDot(r.calendar))\(ANSI.bold(r.title ?? ""))\(ANSI.dim(metaFor(r)))")
@@ -172,16 +144,9 @@ store.requestFullAccessToReminders { granted, _ in
         }
 
     case "add":
-        // Args: add <title> [list] [date [repeat freq]]
-        // List detection: first extra arg matching a known list name is the list.
-        // The remaining string is split on the word "repeat": left = due date, right = recurrence.
         guard args.count > 1 else { fail("provide a reminder title") }
-
         let title = args[1]
         var listName: String? = nil
-        var parsedDate: ParsedDate? = nil
-        var recurrenceSpec: RecurrenceSpec? = nil
-
         var opts = ParsedOptions()
         if args.count > 2 {
             let remaining = Array(args.dropFirst(2))
@@ -195,26 +160,27 @@ store.requestFullAccessToReminders { granted, _ in
             }
             opts = parseOptions(rawString)
         }
-        if !opts.date.isEmpty { parsedDate = parseDate(opts.date) }
-        if !opts.recurrence.isEmpty {
+        let parsedDate = opts.date.isEmpty ? nil : parseDate(opts.date)
+        let recurrenceSpec: RecurrenceSpec?
+        if opts.recurrence.isEmpty {
+            recurrenceSpec = nil
+        } else {
             guard let spec = parseRecurrence(opts.recurrence) else {
                 fail("Unrecognised repeat: \"\(opts.recurrence)\"")
             }
             recurrenceSpec = spec
         }
 
-        let defaultCal = store.defaultCalendarForNewReminders()
-        guard let cal = listName.flatMap({ name in store.calendars(for: .reminder).first(where: { $0.title == name }) })
-                     ?? defaultCal else {
+        guard let cal = listName.flatMap({ name in store.calendars(for: .reminder).first { $0.title == name } })
+                        ?? store.defaultCalendarForNewReminders() else {
             fail("List not found: \(listName ?? "default")")
         }
         let reminder = EKReminder(eventStore: store)
         reminder.title = title
         reminder.calendar = cal
         if let pd = parsedDate {
-            let comps: Set<Calendar.Component> = pd.hasTime
-                ? [.year, .month, .day, .hour, .minute] : [.year, .month, .day]
-            reminder.dueDateComponents = Calendar.current.dateComponents(comps, from: pd.date)
+            let fields: Set<Calendar.Component> = pd.hasTime ? [.year, .month, .day, .hour, .minute] : [.year, .month, .day]
+            reminder.dueDateComponents = Calendar.current.dateComponents(fields, from: pd.date)
         }
         if let spec = recurrenceSpec            { reminder.addRecurrenceRule(toEKRule(spec)) }
         if let p = parsePriority(opts.priority) { reminder.priority = p }
@@ -224,11 +190,11 @@ store.requestFullAccessToReminders { granted, _ in
             try store.save(reminder, commit: true)
             try? ActivityLog.write(tool: "reminders", cmd: "add", desc: title, container: cal.title)
             var parts = ["Added: \(title) (in \(cal.title))"]
-            if let pd = parsedDate          { parts.append("due \(formatDate(pd.date, showTime: pd.hasTime))") }
-            if let s = recurrenceSpec       { parts.append(describeRecurrence(s)) }
-            if !opts.priority.isEmpty       { parts.append("priority \(opts.priority)") }
-            if !opts.note.isEmpty           { parts.append("+ note") }
-            if !opts.url.isEmpty            { parts.append("url \(opts.url)") }
+            if let pd = parsedDate        { parts.append("due \(formatDate(pd.date, showTime: pd.hasTime))") }
+            if let s = recurrenceSpec     { parts.append(describeRecurrence(s)) }
+            if !opts.priority.isEmpty     { parts.append("priority \(opts.priority)") }
+            if !opts.note.isEmpty         { parts.append("+ note") }
+            if !opts.url.isEmpty          { parts.append("url \(opts.url)") }
             print(parts.joined(separator: " · "))
         } catch {
             fail("Could not save reminder: \(error.localizedDescription)")
@@ -236,17 +202,12 @@ store.requestFullAccessToReminders { granted, _ in
         semaphore.signal()
 
     case "change":
-        // Args: change <title> [list] [date]
-        // Only fields that are specified are updated; others are left as-is.
         guard args.count > 1 else { fail("provide a reminder title") }
-
-        let editArgs = Array(args)
-        let title = editArgs[1]
+        let title = args[1]
         var listName: String? = nil
         var newDateRepeat: String? = nil
-
-        if editArgs.count > 2 {
-            let remaining = Array(editArgs.dropFirst(2))
+        if args.count > 2 {
+            let remaining = Array(args.dropFirst(2))
             let knownLists = store.calendars(for: .reminder).map { $0.title }
             if knownLists.contains(remaining[0]) {
                 listName = remaining[0]
@@ -255,31 +216,7 @@ store.requestFullAccessToReminders { granted, _ in
                 newDateRepeat = remaining.joined(separator: " ")
             }
         }
-
-        let editCalendars: [EKCalendar]
-        if let listName {
-            guard let cal = store.calendars(for: .reminder).first(where: { $0.title == listName }) else {
-                fail("List not found: \(listName)")
-            }
-            editCalendars = [cal]
-        } else {
-            editCalendars = store.calendars(for: .reminder)
-        }
-
-        store.fetchReminders(matching: store.predicateForIncompleteReminders(
-                withDueDateStarting: nil, ending: nil, calendars: editCalendars)) { reminders in
-            let matches = (reminders ?? []).filter {
-                ($0.title ?? "").caseInsensitiveCompare(title) == .orderedSame
-            }
-            guard !matches.isEmpty else { fail("Not found: \(title)\(listName.map { " in \($0)" } ?? "")") }
-            if matches.count > 1 {
-                print("Multiple reminders named '\(title)':")
-                for r in matches { print("  [\(r.calendar.title)]") }
-                print("Add the list name to narrow: reminders change \"\(title)\" \(matches[0].calendar.title) ...")
-                exit(1)
-            }
-            let reminder = matches[0]
-
+        resolveReminder(title: title, list: listName, cmd: "change", store: store) { reminder in
             let opts = newDateRepeat.map { parseOptions($0) } ?? ParsedOptions()
             let reminderChanges: ReminderChanges
             do {
@@ -291,41 +228,11 @@ store.requestFullAccessToReminders { granted, _ in
             } catch {
                 fail("Change failed: \(error.localizedDescription)")
             }
-
-            if case .cleared = reminderChanges.due { reminder.dueDateComponents = nil }
-            if case .set(let comps) = reminderChanges.due { reminder.dueDateComponents = comps }
-
-            if case .cleared = reminderChanges.recurrence {
-                reminder.recurrenceRules?.forEach { reminder.removeRecurrenceRule($0) }
-            }
-            if case .set(let spec) = reminderChanges.recurrence {
-                reminder.recurrenceRules?.forEach { reminder.removeRecurrenceRule($0) }
-                reminder.addRecurrenceRule(toEKRule(spec))
-            }
-
-            if case .set(let p) = reminderChanges.priority { reminder.priority = p }
-
-            if case .cleared = reminderChanges.note { reminder.notes = nil }
-            if case .set(let n) = reminderChanges.note { reminder.notes = n }
-
-            if case .cleared = reminderChanges.url { reminder.url = nil }
-            if case .set(let u) = reminderChanges.url, let url = URL(string: u) { reminder.url = url }
-
-            var descriptions = reminderChanges.descriptions
-            if case .set(let targetName) = reminderChanges.list {
-                guard let targetCal = store.calendars(for: .reminder).first(where: {
-                    $0.title.caseInsensitiveCompare(targetName) == .orderedSame
-                }) else { fail("List not found: \(targetName)") }
-                let from = reminder.calendar.title
-                reminder.calendar = targetCal
-                descriptions.append("list → \(from) → \(targetCal.title)")
-            }
-            let changes = descriptions
-
+            let descriptions = applyChanges(reminderChanges, to: reminder, store: store)
             do {
                 try store.save(reminder, commit: true)
                 try? ActivityLog.write(tool: "reminders", cmd: "change", desc: title, container: reminder.calendar.title)
-                print("Updated \"\(title)\": \(changes.joined(separator: ", "))")
+                print("Updated \"\(title)\": \(descriptions.joined(separator: ", "))")
             } catch {
                 fail("Could not save: \(error.localizedDescription)")
             }
@@ -334,30 +241,8 @@ store.requestFullAccessToReminders { granted, _ in
 
     case "show":
         guard args.count > 1 else { fail("provide a reminder title") }
-        let title = args[1]
         let listName = args.count > 2 ? args[2] : nil
-        let showCalendars: [EKCalendar]
-        if let listName {
-            guard let cal = store.calendars(for: .reminder).first(where: { $0.title == listName }) else {
-                fail("List not found: \(listName)")
-            }
-            showCalendars = [cal]
-        } else {
-            showCalendars = store.calendars(for: .reminder)
-        }
-        store.fetchReminders(matching: store.predicateForIncompleteReminders(
-                withDueDateStarting: nil, ending: nil, calendars: showCalendars)) { reminders in
-            let matches = (reminders ?? []).filter {
-                ($0.title ?? "").caseInsensitiveCompare(title) == .orderedSame
-            }
-            guard !matches.isEmpty else { fail("Not found: \(title)\(listName.map { " in \($0)" } ?? "")") }
-            if matches.count > 1 {
-                print("Multiple reminders named '\(title)':")
-                for r in matches { print("  [\(r.calendar.title)]") }
-                print("Add the list name to narrow: reminders show \"\(title)\" \(matches[0].calendar.title)")
-                exit(1)
-            }
-            let reminder = matches[0]
+        resolveReminder(title: args[1], list: listName, cmd: "show", store: store) { reminder in
             let cal = Calendar.current
             print("Title:    \(reminder.title ?? "")")
             print("List:     \(reminder.calendar.title)")
@@ -391,28 +276,7 @@ store.requestFullAccessToReminders { granted, _ in
         let oldTitle = args[1]
         let newTitle = args[2]
         let listName = args.count > 3 ? args[3] : nil
-        let renameCalendars: [EKCalendar]
-        if let listName {
-            guard let cal = store.calendars(for: .reminder).first(where: { $0.title == listName }) else {
-                fail("List not found: \(listName)")
-            }
-            renameCalendars = [cal]
-        } else {
-            renameCalendars = store.calendars(for: .reminder)
-        }
-        store.fetchReminders(matching: store.predicateForIncompleteReminders(
-                withDueDateStarting: nil, ending: nil, calendars: renameCalendars)) { reminders in
-            let matches = (reminders ?? []).filter {
-                ($0.title ?? "").caseInsensitiveCompare(oldTitle) == .orderedSame
-            }
-            guard !matches.isEmpty else { fail("Not found: \(oldTitle)\(listName.map { " in \($0)" } ?? "")") }
-            if matches.count > 1 {
-                print("Multiple reminders named '\(oldTitle)':")
-                for r in matches { print("  [\(r.calendar.title)]") }
-                print("Add the list name to narrow: reminders rename \"\(oldTitle)\" \"\(newTitle)\" \(matches[0].calendar.title)")
-                exit(1)
-            }
-            let reminder = matches[0]
+        resolveReminder(title: oldTitle, list: listName, cmd: "rename", store: store) { reminder in
             reminder.title = newTitle
             do {
                 try store.save(reminder, commit: true)
@@ -426,26 +290,16 @@ store.requestFullAccessToReminders { granted, _ in
 
     case "find":
         guard args.count > 1 else { fail("provide a search query") }
-        let query      = args.dropFirst().joined(separator: " ")
-        let lower      = query.lowercased()
-        let allCals    = store.calendars(for: .reminder)
-        let predicate  = store.predicateForIncompleteReminders(
-            withDueDateStarting: nil, ending: nil, calendars: allCals)
+        let query = args.dropFirst().joined(separator: " ")
+        let lower = query.lowercased()
+        let predicate = store.predicateForIncompleteReminders(
+            withDueDateStarting: nil, ending: nil, calendars: store.calendars(for: .reminder))
         store.fetchReminders(matching: predicate) { reminders in
             let cal = Calendar.current
             let matches = (reminders ?? []).filter {
                 ($0.title ?? "").lowercased().contains(lower) ||
                 ($0.notes ?? "").lowercased().contains(lower)
-            }.sorted { a, b in
-                let da = a.dueDateComponents.flatMap { cal.date(from: $0) }
-                let db = b.dueDateComponents.flatMap { cal.date(from: $0) }
-                switch (da, db) {
-                case (nil, nil):     return (a.title ?? "") < (b.title ?? "")
-                case (nil, _):       return false
-                case (_, nil):       return true
-                case (let x?, let y?): return x < y
-                }
-            }
+            }.sorted(by: byDue)
             if matches.isEmpty {
                 print("No reminders matching '\(query)'")
             } else {
@@ -464,28 +318,7 @@ store.requestFullAccessToReminders { granted, _ in
         guard args.count > 1 else { fail("provide a reminder title") }
         let title = args[1]
         let listName = args.count > 2 ? args[2] : nil
-        let calendars: [EKCalendar]
-        if let listName {
-            guard let cal = store.calendars(for: .reminder).first(where: { $0.title == listName }) else {
-                fail("List not found: \(listName)")
-            }
-            calendars = [cal]
-        } else {
-            calendars = store.calendars(for: .reminder)
-        }
-        let predicate = store.predicateForIncompleteReminders(withDueDateStarting: nil, ending: nil, calendars: calendars)
-        store.fetchReminders(matching: predicate) { reminders in
-            let matches = (reminders ?? []).filter {
-                ($0.title ?? "").caseInsensitiveCompare(title) == .orderedSame
-            }
-            guard !matches.isEmpty else { fail("Not found: \(title)\(listName.map { " in \($0)" } ?? "")") }
-            if matches.count > 1 {
-                print("Multiple reminders named '\(title)':")
-                for r in matches { print("  [\(r.calendar.title)]") }
-                print("Add the list name to narrow: reminders \(cmd) \"\(title)\" \(matches[0].calendar.title)")
-                exit(1)
-            }
-            let reminder = matches[0]
+        resolveReminder(title: title, list: listName, cmd: cmd, store: store) { reminder in
             do {
                 if cmd == "done" {
                     reminder.isCompleted = true
@@ -493,9 +326,9 @@ store.requestFullAccessToReminders { granted, _ in
                     try? ActivityLog.write(tool: "reminders", cmd: "done", desc: title, container: reminder.calendar.title)
                     print("Done: \(title)")
                 } else {
-                    let listName = reminder.calendar.title
+                    let container = reminder.calendar.title
                     try store.remove(reminder, commit: true)
-                    try? ActivityLog.write(tool: "reminders", cmd: "remove", desc: title, container: listName)
+                    try? ActivityLog.write(tool: "reminders", cmd: "remove", desc: title, container: container)
                     print("Removed: \(title)")
                 }
             } catch {
@@ -510,7 +343,6 @@ store.requestFullAccessToReminders { granted, _ in
 }
 
 semaphore.wait()
-
 
 UpdateChecker.spawnBackgroundCheckIfNeeded()
 if let hint = UpdateChecker.hint() { fputs(hint + "\n", stderr) }
