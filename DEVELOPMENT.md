@@ -4,19 +4,24 @@ Patterns and decisions established for this project. Follow these when adding or
 
 ## Architecture: what goes where
 
-The project has two targets — keep them strictly separated.
+The project has three layers — keep them strictly separated.
 
 **`RemindersLib`** — pure Swift, no framework dependencies
-- All parsing logic: dates, recurrence strings, splitting
-- All description/formatting of domain types
-- Anything that can be expressed as `String → SomeType`
+- Parsing logic: recurrence strings, options strings
+- Business logic: `parseReminderChanges`, `parsePriority`
+- Formatting: `metaLine(for:)`, `ReminderMeta`
+- Types: `FieldChange<T>`, `ReminderChanges`, `RecurrenceSpec`
 - If it doesn't need EventKit, it goes here
 
-**`RemindersCLI/main.swift`** — EventKit and AppKit only
+**`RemindersCLI/`** — EventKit boundary helpers (not main.swift)
+- `RecurrenceConversion.swift` — `toEKRule`: RecurrenceSpec → EKRecurrenceRule
+- `Sorting.swift` — `byDue`, `byPriority`, `byTitle`, `byCreated` over EKReminder
+
+**`RemindersCLI/main.swift`** — dispatch and EventKit calls only
 - Argument parsing and command dispatch
 - EventKit calls (fetch, save, delete)
-- Thin conversion wrappers (e.g. `toEKRule(_ spec: RecurrenceSpec)`)
 - `NSWorkspace` for launching apps
+- Constructs framework objects from Lib results; applies changes to EKReminder
 
 The rule: if you find yourself wanting to test something that lives in `main.swift`, that's a sign it should be moved to `RemindersLib`.
 
@@ -61,10 +66,10 @@ When adding new features, ask: what would someone naturally type? Accept that.
 ## Testing
 
 - All test-worthy logic lives in `RemindersLib` so it can be tested without Reminders permissions
-- Tests live in `Tests/RemindersLibTests/main.swift` — a custom runner, no XCTest or Xcode required
-- Run with `reminders test`
-- New parsing behaviour → new test suite. Cover: typical inputs, edge cases, invalid/nil inputs
-- Test descriptions should read as plain English sentences (they appear verbatim in output)
+- Framework: Quick + Nimble; run with `swift test`
+- One spec file per source file: `RecurrenceParsingSpec`, `OptionsParsingSpec`, `ReminderFormatterSpec`, `ChangeCommandSpec`
+- Structure: `describe` → `context` → `it`; one assertion per `it`
+- New behaviour → new spec covering: typical inputs, edge cases, invalid/nil inputs
 
 ## Output conventions
 
