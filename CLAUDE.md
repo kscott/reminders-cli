@@ -20,7 +20,7 @@ swift build              # build debug (needed before running tests)
 - `Sources/RemindersLib/DateParsing.swift` — pure date parsing logic, no framework deps
 - `Sources/RemindersLib/RecurrenceParsing.swift` — pure recurrence parsing logic, no framework deps
 - `Sources/RemindersCLI/main.swift` — CLI entry point, all EventKit/AppKit code
-- `Tests/RemindersLibTests/main.swift` — custom test runner (no Xcode/XCTest required)
+- `Tests/RemindersLibTests/` — Quick/Nimble specs, run via `swift test`
 - `reminders` — bash wrapper script, symlinked into `~/bin`
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for coding conventions, interface design rules, and patterns to follow when adding features.
@@ -29,7 +29,6 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for coding conventions, interface design ru
 
 - **EventKit over AppleScript** — AppleScript blocks the Reminders UI and is ~20x slower
 - **RemindersLib separated from RemindersCLI** — allows unit testing without entitlements or permissions
-- **Custom test runner instead of XCTest** — works with CLT only, no full Xcode needed
 - **`reminders open` uses NSWorkspace** — non-blocking, doesn't require Reminders to be running
 - **RecurrenceSpec in RemindersLib** — parsing and description are pure functions, converted to EKRecurrenceRule in main.swift
 

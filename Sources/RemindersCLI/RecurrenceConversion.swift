@@ -26,3 +26,13 @@ func toEKRule(_ spec: RecurrenceSpec) -> EKRecurrenceRule {
     }
     return EKRecurrenceRule(recurrenceWith: ekFreqs[spec.frequency]!, interval: spec.interval, end: nil)
 }
+
+func describeEKRule(_ rule: EKRecurrenceRule) -> String {
+    switch rule.frequency {
+    case .daily:   return "daily"
+    case .weekly:  return rule.interval > 1 ? "every \(rule.interval) weeks" : "weekly"
+    case .monthly: return rule.interval > 1 ? "every \(rule.interval) months" : "monthly"
+    case .yearly:  return "yearly"
+    @unknown default: return "repeating"
+    }
+}
