@@ -4,7 +4,6 @@
 // Business logic lives in RemindersLib. EventKit helpers live in RemindersCLI/*.swift.
 
 import Foundation
-import AppKit
 import EventKit
 import RemindersLib
 import GetClearKit
@@ -24,8 +23,8 @@ store.requestFullAccessToReminders { granted, _ in
 
     switch cmd {
     case "what":           handleWhat(args: args, semaphore: semaphore)
-    case "open":           NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Reminders.app")); semaphore.signal()
-    case "lists":          print(store.calendars(for: .reminder).map { $0.title }.sorted().joined(separator: "\n")); semaphore.signal()
+    case "open":           handleOpen(semaphore: semaphore)
+    case "lists":          handleLists(store: store, semaphore: semaphore)
     case "list":           handleList(args: args, store: store, semaphore: semaphore)
     case "add":            handleAdd(args: args, store: store, semaphore: semaphore)
     case "change":         handleChange(args: args, store: store, semaphore: semaphore)
