@@ -1,6 +1,4 @@
 // FindCommand.swift
-//
-// Handler for the `find` command — searches incomplete reminders by title and notes.
 
 import EventKit
 import GetClearKit

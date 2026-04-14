@@ -1,6 +1,4 @@
 // RenameCommand.swift
-//
-// Handler for the `rename` command — changes the title of an existing reminder.
 
 import EventKit
 import GetClearKit

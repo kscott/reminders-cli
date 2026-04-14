@@ -1,6 +1,4 @@
 // Usage.swift
-//
-// Prints usage information and exits.
 
 import Foundation
 import GetClearKit

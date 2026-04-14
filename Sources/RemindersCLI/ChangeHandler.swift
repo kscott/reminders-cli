@@ -1,6 +1,4 @@
 // ChangeHandler.swift
-//
-// Handler for the `change` command — parses args, resolves the reminder, and applies field changes.
 
 import EventKit
 import GetClearKit

@@ -1,6 +1,4 @@
 // ListCommand.swift
-//
-// Handler for the `list` command — fetches and displays reminders, optionally scoped to one list.
 
 import EventKit
 import GetClearKit
@@ -56,7 +54,7 @@ func handleList(args: [String], store: EKEventStore, semaphore: DispatchSemaphor
         } else {
             let grouped = Dictionary(grouping: reminders ?? [], by: { $0.calendar.title })
             for listName in grouped.keys.sorted() {
-                let dot = store.calendars(for: .reminder).first { $0.title == listName }.map { calendarDot($0) } ?? "  "
+                let dot = listCalendars.first { $0.title == listName }.map { calendarDot($0) } ?? "  "
                 print("\(dot)\(ANSI.bold(listName))")
                 for r in (grouped[listName] ?? []).sorted(by: sortFn) {
                     print("\(calendarDot(r.calendar))\(ANSI.bold(r.title ?? ""))\(ANSI.dim(metaFor(r)))")

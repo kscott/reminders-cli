@@ -1,6 +1,4 @@
 // WhatCommand.swift
-//
-// Handler for the `what` command — displays activity log entries via GetClearKit.
 
 import Foundation
 import GetClearKit

@@ -1,6 +1,4 @@
 // AddCommand.swift
-//
-// Handler for the `add` command — parses args and creates a new EKReminder.
 
 import EventKit
 import GetClearKit
@@ -11,11 +9,11 @@ func handleAdd(args: [String], store: EKEventStore, semaphore: DispatchSemaphore
     let title = args[1]
     var listName: String? = nil
     var opts = ParsedOptions()
+    let allCalendars = store.calendars(for: .reminder)
     if args.count > 2 {
         let remaining = Array(args.dropFirst(2))
-        let knownLists = store.calendars(for: .reminder).map { $0.title }
         let rawString: String
-        if knownLists.contains(remaining[0]) {
+        if allCalendars.map({ $0.title }).contains(remaining[0]) {
             listName = remaining[0]
             rawString = remaining.dropFirst().joined(separator: " ")
         } else {
@@ -33,7 +31,7 @@ func handleAdd(args: [String], store: EKEventStore, semaphore: DispatchSemaphore
         }
         recurrenceSpec = spec
     }
-    guard let cal = listName.flatMap({ name in store.calendars(for: .reminder).first { $0.title == name } })
+    guard let cal = listName.flatMap({ name in allCalendars.first { $0.title == name } })
                     ?? store.defaultCalendarForNewReminders() else {
         fail("List not found: \(listName ?? "default")")
     }

@@ -1,6 +1,4 @@
 // DoneRemoveCommand.swift
-//
-// Handler for the `done` and `remove` commands — marks a reminder complete or deletes it.
 
 import EventKit
 import GetClearKit

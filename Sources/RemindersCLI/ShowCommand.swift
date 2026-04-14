@@ -1,6 +1,4 @@
 // ShowCommand.swift
-//
-// Handler for the `show` command — prints full detail of a single reminder.
 
 import EventKit
 import GetClearKit
