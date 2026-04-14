@@ -13,7 +13,7 @@ func handleAdd(args: [String], store: EKEventStore, semaphore: DispatchSemaphore
     if args.count > 2 {
         let remaining = Array(args.dropFirst(2))
         let rawString: String
-        if allCalendars.map({ $0.title }).contains(remaining[0]) {
+        if allCalendars.contains(where: { $0.title == remaining[0] }) {
             listName = remaining[0]
             rawString = remaining.dropFirst().joined(separator: " ")
         } else {

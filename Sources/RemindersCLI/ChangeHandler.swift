@@ -11,8 +11,7 @@ func handleChange(args: [String], store: EKEventStore, semaphore: DispatchSemaph
     var newDateRepeat: String? = nil
     if args.count > 2 {
         let remaining = Array(args.dropFirst(2))
-        let knownLists = store.calendars(for: .reminder).map { $0.title }
-        if knownLists.contains(remaining[0]) {
+        if store.calendars(for: .reminder).contains(where: { $0.title == remaining[0] }) {
             listName = remaining[0]
             if remaining.count > 1 { newDateRepeat = remaining.dropFirst().joined(separator: " ") }
         } else {
